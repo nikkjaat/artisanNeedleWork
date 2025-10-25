@@ -22,8 +22,7 @@ interface OrderStatus {
 }
 
 export default function TrackOrderPage() {
-
-   useEffect(() => {
+  useEffect(() => {
     document.title = "Track your Order | ArtisanNeedleWork - Handcrafted Gifts";
     document
       .querySelector('meta[name="description"]')
@@ -91,18 +90,19 @@ export default function TrackOrderPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blush via-lavender to-beige py-12 px-6">
-      <div className="container mx-auto max-w-4xl pt-12 mt-8">
+    <div className="min-h-screen bg-gradient-to-br from-blush via-lavender to-beige py-6 px-4 sm:py-12 sm:px-6 pt-12">
+      <div className="max-w-4xl mx-auto pt-12 sm:pt-12 mt-4 sm:mt-10">
+        {/* Header */}
         <motion.div
-          initial={{ opacity: 0, y: 30 }}
+          initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.8 }}
-          className="text-center mb-12"
+          transition={{ duration: 0.6 }}
+          className="text-center mb-8 sm:mb-12"
         >
-          <h1 className="font-serif text-4xl md:text-5xl text-text-dark mb-4">
+          <h1 className="font-serif text-2xl sm:text-3xl md:text-4xl lg:text-5xl text-text-dark mb-3 sm:mb-4">
             Track Your Order
           </h1>
-          <p className="text-text-light text-lg">
+          <p className="text-text-light text-sm sm:text-base md:text-lg">
             Enter your order number to see the current status
           </p>
         </motion.div>
@@ -111,31 +111,33 @@ export default function TrackOrderPage() {
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.2, duration: 0.8 }}
-          className="bg-white rounded-3xl shadow-xl p-8 mb-8"
+          transition={{ delay: 0.1, duration: 0.6 }}
+          className="bg-white rounded-2xl sm:rounded-3xl shadow-lg sm:shadow-xl p-4 sm:p-6 md:p-8 mb-6 sm:mb-8"
         >
-          <div className="flex gap-4">
+          <div className="flex flex-col sm:flex-row gap-3 sm:gap-4">
             <input
               type="text"
               value={orderNumber}
               onChange={(e) => setOrderNumber(e.target.value)}
               placeholder="Enter your order number (e.g., HG000001)"
-              className="flex-1 px-6 py-4 rounded-full border-2 border-gray-200 focus:border-rose focus:outline-none transition-colors"
+              className="flex-1 px-4 sm:px-6 py-3 sm:py-4 rounded-full sm:rounded-full border border-gray-300 sm:border-2 focus:border-rose focus:outline-none transition-colors text-sm sm:text-base"
               onKeyPress={(e) => e.key === "Enter" && trackOrder()}
             />
             <motion.button
               onClick={trackOrder}
               disabled={loading}
-              className="bg-rose text-white px-8 py-4 rounded-full hover:bg-opacity-90 transition-all font-medium disabled:opacity-50"
-              whileHover={{ scale: 1.05 }}
-              whileTap={{ scale: 0.95 }}
+              className="bg-rose text-white px-6 sm:px-8 py-3 sm:py-4 rounded-full hover:bg-opacity-90 transition-all font-medium disabled:opacity-50 text-sm sm:text-base whitespace-nowrap"
+              whileHover={{ scale: 1.02 }}
+              whileTap={{ scale: 0.98 }}
             >
               {loading ? "Tracking..." : "Track Order"}
             </motion.button>
           </div>
 
           {error && (
-            <p className="text-red-500 text-sm mt-4 text-center">{error}</p>
+            <p className="text-red-500 text-xs sm:text-sm mt-3 text-center">
+              {error}
+            </p>
           )}
         </motion.div>
 
@@ -144,25 +146,25 @@ export default function TrackOrderPage() {
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.8 }}
-            className="bg-white rounded-3xl shadow-xl overflow-hidden"
+            transition={{ duration: 0.6 }}
+            className="bg-white rounded-2xl sm:rounded-3xl shadow-lg sm:shadow-xl overflow-hidden"
           >
             {/* Order Header */}
-            <div className="bg-gradient-soft p-8">
-              <div className="flex justify-between items-start mb-4">
-                <div>
-                  <h2 className="font-serif text-2xl text-text-dark mb-2">
+            <div className="bg-gradient-soft p-4 sm:p-6 md:p-8">
+              <div className="flex flex-col sm:flex-row justify-between items-start gap-3 sm:gap-4 mb-4">
+                <div className="flex-1">
+                  <h2 className="font-serif text-xl sm:text-2xl text-text-dark mb-1 sm:mb-2">
                     Order #{order.orderNumber}
                   </h2>
-                  <p className="text-text-light">
+                  <p className="text-text-light text-xs sm:text-sm">
                     Placed on {new Date(order.createdAt).toLocaleDateString()}
                   </p>
                 </div>
-                <div className="text-right">
-                  <p className="text-2xl font-bold text-rose">
+                <div className="text-left sm:text-right w-full sm:w-auto">
+                  <p className="text-xl sm:text-2xl font-bold text-rose">
                     ₹{order.totalAmount}
                   </p>
-                  <p className="text-sm text-text-light">
+                  <p className="text-xs sm:text-sm text-text-light">
                     {order.items.reduce((sum, item) => sum + item.quantity, 0)}{" "}
                     item(s)
                   </p>
@@ -171,8 +173,8 @@ export default function TrackOrderPage() {
             </div>
 
             {/* Status Timeline */}
-            <div className="p-8">
-              <h3 className="font-serif text-xl text-text-dark mb-6">
+            <div className="p-4 sm:p-6 md:p-8">
+              <h3 className="font-serif text-lg sm:text-xl text-text-dark mb-4 sm:mb-6">
                 Order Status
               </h3>
 
@@ -180,10 +182,10 @@ export default function TrackOrderPage() {
                 {getStatusSteps(order.status).map((step, index) => (
                   <div
                     key={step.key}
-                    className="flex items-center mb-6 last:mb-0"
+                    className="flex items-start mb-4 sm:mb-6 last:mb-0"
                   >
                     <div
-                      className={`w-12 h-12 rounded-full flex items-center justify-center text-xl ${
+                      className={`w-8 h-8 sm:w-10 sm:h-10 md:w-12 md:h-12 rounded-full flex items-center justify-center text-base sm:text-lg md:text-xl flex-shrink-0 ${
                         step.completed
                           ? "bg-rose text-white"
                           : "bg-gray-200 text-gray-400"
@@ -192,16 +194,16 @@ export default function TrackOrderPage() {
                       {step.icon}
                     </div>
 
-                    <div className="ml-4 flex-1">
+                    <div className="ml-3 sm:ml-4 flex-1 min-w-0">
                       <h4
-                        className={`font-medium ${
+                        className={`font-medium text-sm sm:text-base ${
                           step.completed ? "text-text-dark" : "text-gray-400"
                         }`}
                       >
                         {step.label}
                       </h4>
                       {step.active && (
-                        <p className="text-sm text-rose font-medium">
+                        <p className="text-xs sm:text-sm text-rose font-medium mt-1">
                           Current Status
                         </p>
                       )}
@@ -209,10 +211,14 @@ export default function TrackOrderPage() {
 
                     {index < getStatusSteps(order.status).length - 1 && (
                       <div
-                        className={`absolute left-6 w-0.5 h-6 mt-12 ${
+                        className={`absolute left-4 sm:left-5 md:left-6 w-0.5 h-4 sm:h-6 mt-8 sm:mt-10 md:mt-12 ${
                           step.completed ? "bg-rose" : "bg-gray-200"
                         }`}
-                        style={{ top: `${index * 96 + 48}px` }}
+                        style={{
+                          top: `${
+                            index * (window.innerWidth < 640 ? 64 : 96) + 32
+                          }px`,
+                        }}
                       />
                     )}
                   </div>
@@ -220,11 +226,11 @@ export default function TrackOrderPage() {
               </div>
 
               {/* Estimated Delivery */}
-              <div className="bg-blue-50 rounded-xl p-6 mt-8">
-                <h4 className="font-medium text-text-dark mb-2">
+              <div className="bg-blue-50 rounded-lg sm:rounded-xl p-4 sm:p-6 mt-6 sm:mt-8">
+                <h4 className="font-medium text-text-dark mb-1 sm:mb-2 text-sm sm:text-base">
                   Estimated Delivery
                 </h4>
-                <p className="text-text-light">
+                <p className="text-text-light text-xs sm:text-sm">
                   {new Date(order.estimatedDelivery).toLocaleDateString(
                     "en-IN",
                     {
@@ -236,26 +242,28 @@ export default function TrackOrderPage() {
                   )}
                 </p>
                 {order.trackingNumber && (
-                  <p className="text-sm text-text-light mt-2">
+                  <p className="text-xs text-text-light mt-2">
                     Tracking Number: {order.trackingNumber}
                   </p>
                 )}
               </div>
 
               {/* Order Items */}
-              <div className="mt-8">
-                <h4 className="font-medium text-text-dark mb-4">Order Items</h4>
-                <div className="space-y-3">
+              <div className="mt-6 sm:mt-8">
+                <h4 className="font-medium text-text-dark mb-3 sm:mb-4 text-sm sm:text-base">
+                  Order Items
+                </h4>
+                <div className="space-y-2 sm:space-y-3">
                   {order.items.map((item, index) => (
                     <div
                       key={index}
-                      className="flex justify-between items-center py-3 border-b border-gray-100 last:border-b-0"
+                      className="flex justify-between items-center py-2 sm:py-3 border-b border-gray-100 last:border-b-0"
                     >
-                      <div>
-                        <h5 className="font-medium text-text-dark">
+                      <div className="flex-1 min-w-0">
+                        <h5 className="font-medium text-text-dark text-sm sm:text-base truncate">
                           {item.productName}
                         </h5>
-                        <p className="text-sm text-text-light">
+                        <p className="text-xs sm:text-sm text-text-light">
                           Quantity: {item.quantity}
                         </p>
                       </div>
@@ -271,10 +279,10 @@ export default function TrackOrderPage() {
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.4, duration: 0.8 }}
-          className="text-center mt-12"
+          transition={{ delay: 0.2, duration: 0.6 }}
+          className="text-center mt-8 sm:mt-12"
         >
-          <p className="text-text-light mb-4">
+          <p className="text-text-light mb-3 sm:mb-4 text-sm sm:text-base">
             Need help with your order? We&apos;re here to assist you!
           </p>
           <motion.button
@@ -289,9 +297,9 @@ export default function TrackOrderPage() {
                 "_blank"
               );
             }}
-            className="bg-green-500 text-white px-6 py-3 rounded-full hover:bg-green-600 transition-all font-medium inline-flex items-center gap-2"
-            whileHover={{ scale: 1.05 }}
-            whileTap={{ scale: 0.95 }}
+            className="bg-green-500 text-white px-4 sm:px-6 py-2 sm:py-3 rounded-full hover:bg-green-600 transition-all font-medium inline-flex items-center gap-2 text-sm sm:text-base"
+            whileHover={{ scale: 1.02 }}
+            whileTap={{ scale: 0.98 }}
           >
             <span>💬</span>
             Contact Support
