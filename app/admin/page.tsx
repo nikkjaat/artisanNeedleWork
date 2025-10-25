@@ -1,0 +1,789 @@
+'use client';
+
+import { useState, useEffect } from 'react';
+import { motion } from 'framer-motion';
+import { FiPlus, FiEdit2, FiTrash2, FiX, FiUpload, FiImage } from 'react-icons/fi';
+
+interface Product {
+  _id: string;
+  name: string;
+  category: 'embroidery' | 'hanky' | 'accessories';
+  description: string;
+  basePrice: number;
+  images: string[];
+  customizable: boolean;
+  options: {
+    colors: string[];
+    sizes: string[];
+    materials: string[];
+  };
+  inStock: boolean;
+  featured: boolean;
+  createdAt: string;
+}
+
+interface Order {
+  _id: string;
+  orderNumber: string;
+  customerInfo: {
+    name: string;
+    email: string;
+    phone: string;
+    address: {
+      street: string;
+      city: string;
+      state: string;
+      pincode: string;
+    };
+  };
+  items: Array<{
+    productName: string;
+    quantity: number;
+    price: number;
+    customization: {
+      text: string;
+      color: string;
+      size: string;
+      material: string;
+      specialInstructions: string;
+    };
+  }>;
+  totalAmount: number;
+  status: string;
+  paymentStatus: string;
+  createdAt: string;
+  estimatedDelivery: string;
+}
+
+export default function AdminPage() {
+  const [activeTab, setActiveTab] = useState<'orders' | 'products'>('orders');
+  const [orders, setOrders] = useState<Order[]>([]);
+  const [products, setProducts] = useState<Product[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
+  const [showProductModal, setShowProductModal] = useState(false);
+  const [editingProduct, setEditingProduct] = useState<Product | null>(null);
+
+  useEffect(() => {
+    fetchOrders();
+    fetchProducts();
+  }, []);
+
+  const fetchOrders = async () => {
+    try {
+      const response = await fetch('/api/orders');
+      const result = await response.json();
+      if (result.success) {
+        setOrders(result.orders);
+      }
+    } catch (error) {
+      console.error('Error fetching orders:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const fetchProducts = async () => {
+    try {
+      const response = await fetch('/api/products?all=true');
+      const result = await response.json();
+      if (result.success) {
+        setProducts(result.products);
+      }
+    } catch (error) {
+      console.error('Error fetching products:', error);
+    }
+  };
+
+  const updateOrderStatus = async (orderId: string, status: string) => {
+    try {
+      const response = await fetch(`/api/orders/${orderId}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ status }),
+      });
+
+      const result = await response.json();
+      if (result.success) {
+        setOrders(orders.map(order =>
+          order._id === orderId ? { ...order, status } : order
+        ));
+        if (selectedOrder && selectedOrder._id === orderId) {
+          setSelectedOrder({ ...selectedOrder, status });
+        }
+      }
+    } catch (error) {
+      console.error('Error updating order status:', error);
+    }
+  };
+
+  const deleteProduct = async (productId: string) => {
+    if (!confirm('Are you sure you want to delete this product?')) return;
+
+    try {
+      const response = await fetch(`/api/products/${productId}`, {
+        method: 'DELETE',
+      });
+
+      const result = await response.json();
+      if (result.success) {
+        setProducts(products.filter(p => p._id !== productId));
+      }
+    } catch (error) {
+      console.error('Error deleting product:', error);
+    }
+  };
+
+  const getStatusColor = (status: string) => {
+    const colors = {
+      pending: 'bg-yellow-100 text-yellow-800',
+      confirmed: 'bg-blue-100 text-blue-800',
+      'in-progress': 'bg-purple-100 text-purple-800',
+      completed: 'bg-green-100 text-green-800',
+      shipped: 'bg-teal-100 text-teal-800',
+      delivered: 'bg-green-200 text-green-900',
+      cancelled: 'bg-red-100 text-red-800',
+    };
+    return colors[status as keyof typeof colors] || 'bg-gray-100 text-gray-800';
+  };
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-rose"></div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="min-h-screen bg-gray-50 p-6">
+      <div className="max-w-7xl mx-auto">
+        <div className="mb-8">
+          <h1 className="font-serif text-3xl text-text-dark mb-2">Admin Panel</h1>
+          <p className="text-text-light">Manage your products and orders</p>
+        </div>
+
+        <div className="mb-6 border-b border-gray-200">
+          <div className="flex space-x-8">
+            <button
+              onClick={() => setActiveTab('orders')}
+              className={`pb-4 px-2 font-medium transition-colors ${
+                activeTab === 'orders'
+                  ? 'border-b-2 border-rose text-rose'
+                  : 'text-text-light hover:text-text-dark'
+              }`}
+            >
+              Orders
+            </button>
+            <button
+              onClick={() => setActiveTab('products')}
+              className={`pb-4 px-2 font-medium transition-colors ${
+                activeTab === 'products'
+                  ? 'border-b-2 border-rose text-rose'
+                  : 'text-text-light hover:text-text-dark'
+              }`}
+            >
+              Products
+            </button>
+          </div>
+        </div>
+
+        {activeTab === 'orders' ? (
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <div className="lg:col-span-2">
+              <div className="bg-white rounded-xl shadow-lg overflow-hidden">
+                <div className="p-6 border-b">
+                  <h2 className="font-serif text-xl text-text-dark">Recent Orders</h2>
+                </div>
+
+                <div className="divide-y">
+                  {orders.map((order) => (
+                    <motion.div
+                      key={order._id}
+                      className={`p-6 cursor-pointer hover:bg-gray-50 transition-colors ${
+                        selectedOrder?._id === order._id ? 'bg-blue-50' : ''
+                      }`}
+                      onClick={() => setSelectedOrder(order)}
+                      whileHover={{ x: 4 }}
+                    >
+                      <div className="flex justify-between items-start mb-2">
+                        <div>
+                          <h3 className="font-medium text-text-dark">#{order.orderNumber}</h3>
+                          <p className="text-sm text-text-light">{order.customerInfo.name}</p>
+                        </div>
+                        <span className={`px-3 py-1 rounded-full text-xs font-medium ${getStatusColor(order.status)}`}>
+                          {order.status}
+                        </span>
+                      </div>
+
+                      <div className="flex justify-between items-center">
+                        <p className="text-sm text-text-light">
+                          {order.items.length} item(s) • ₹{order.totalAmount}
+                        </p>
+                        <p className="text-xs text-text-light">
+                          {new Date(order.createdAt).toLocaleDateString()}
+                        </p>
+                      </div>
+                    </motion.div>
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            <div className="lg:col-span-1">
+              {selectedOrder ? (
+                <div className="bg-white rounded-xl shadow-lg p-6">
+                  <div className="mb-6">
+                    <h3 className="font-serif text-xl text-text-dark mb-2">
+                      Order #{selectedOrder.orderNumber}
+                    </h3>
+                    <span className={`px-3 py-1 rounded-full text-xs font-medium ${getStatusColor(selectedOrder.status)}`}>
+                      {selectedOrder.status}
+                    </span>
+                  </div>
+
+                  <div className="mb-6">
+                    <h4 className="font-medium text-text-dark mb-2">Customer Information</h4>
+                    <div className="text-sm text-text-light space-y-1">
+                      <p>{selectedOrder.customerInfo.name}</p>
+                      <p>{selectedOrder.customerInfo.email}</p>
+                      <p>{selectedOrder.customerInfo.phone}</p>
+                      <p>
+                        {selectedOrder.customerInfo.address.street}, {selectedOrder.customerInfo.address.city}
+                        <br />
+                        {selectedOrder.customerInfo.address.state} - {selectedOrder.customerInfo.address.pincode}
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="mb-6">
+                    <h4 className="font-medium text-text-dark mb-2">Order Items</h4>
+                    {selectedOrder.items.map((item, index) => (
+                      <div key={index} className="bg-gray-50 rounded-lg p-4 mb-3">
+                        <div className="flex justify-between items-start mb-2">
+                          <h5 className="font-medium text-text-dark">{item.productName}</h5>
+                          <span className="text-sm text-text-light">₹{item.price}</span>
+                        </div>
+                        <p className="text-sm text-text-light mb-2">Quantity: {item.quantity}</p>
+
+                        {item.customization.text && (
+                          <div className="text-xs text-text-light space-y-1">
+                            <p><strong>Text:</strong> {item.customization.text}</p>
+                            <p><strong>Color:</strong> {item.customization.color}</p>
+                            <p><strong>Size:</strong> {item.customization.size}</p>
+                            <p><strong>Material:</strong> {item.customization.material}</p>
+                            {item.customization.specialInstructions && (
+                              <p><strong>Instructions:</strong> {item.customization.specialInstructions}</p>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+
+                  <div className="mb-6">
+                    <h4 className="font-medium text-text-dark mb-2">Update Status</h4>
+                    <select
+                      value={selectedOrder.status}
+                      onChange={(e) => updateOrderStatus(selectedOrder._id, e.target.value)}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-rose"
+                    >
+                      <option value="pending">Pending</option>
+                      <option value="confirmed">Confirmed</option>
+                      <option value="in-progress">In Progress</option>
+                      <option value="completed">Completed</option>
+                      <option value="shipped">Shipped</option>
+                      <option value="delivered">Delivered</option>
+                      <option value="cancelled">Cancelled</option>
+                    </select>
+                  </div>
+
+                  <div className="border-t pt-4">
+                    <div className="flex justify-between items-center text-lg font-medium">
+                      <span>Total Amount:</span>
+                      <span className="text-rose">₹{selectedOrder.totalAmount}</span>
+                    </div>
+                    <p className="text-xs text-text-light mt-1">
+                      Estimated Delivery: {new Date(selectedOrder.estimatedDelivery).toLocaleDateString()}
+                    </p>
+                  </div>
+                </div>
+              ) : (
+                <div className="bg-white rounded-xl shadow-lg p-6 text-center">
+                  <p className="text-text-light">Select an order to view details</p>
+                </div>
+              )}
+            </div>
+          </div>
+        ) : (
+          <div>
+            <div className="mb-6 flex justify-end">
+              <button
+                onClick={() => {
+                  setEditingProduct(null);
+                  setShowProductModal(true);
+                }}
+                className="flex items-center space-x-2 bg-rose text-white px-6 py-3 rounded-lg hover:bg-rose-dark transition-colors"
+              >
+                <FiPlus />
+                <span>Add Product</span>
+              </button>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {products.map((product) => (
+                <motion.div
+                  key={product._id}
+                  className="bg-white rounded-xl shadow-lg overflow-hidden"
+                  whileHover={{ y: -4 }}
+                >
+                  {product.images[0] && (
+                    <img
+                      src={product.images[0]}
+                      alt={product.name}
+                      className="w-full h-48 object-cover"
+                    />
+                  )}
+                  <div className="p-6">
+                    <div className="flex justify-between items-start mb-2">
+                      <h3 className="font-serif text-lg text-text-dark">{product.name}</h3>
+                      <span className={`px-2 py-1 text-xs rounded ${
+                        product.inStock ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
+                      }`}>
+                        {product.inStock ? 'In Stock' : 'Out of Stock'}
+                      </span>
+                    </div>
+                    <p className="text-sm text-text-light mb-2">{product.category}</p>
+                    <p className="text-text-light text-sm mb-4 line-clamp-2">{product.description}</p>
+                    <p className="text-rose font-medium mb-4">₹{product.basePrice}</p>
+
+                    <div className="flex space-x-2">
+                      <button
+                        onClick={() => {
+                          setEditingProduct(product);
+                          setShowProductModal(true);
+                        }}
+                        className="flex-1 flex items-center justify-center space-x-2 border border-rose text-rose px-4 py-2 rounded-lg hover:bg-rose hover:text-white transition-colors"
+                      >
+                        <FiEdit2 size={16} />
+                        <span>Edit</span>
+                      </button>
+                      <button
+                        onClick={() => deleteProduct(product._id)}
+                        className="flex-1 flex items-center justify-center space-x-2 border border-red-500 text-red-500 px-4 py-2 rounded-lg hover:bg-red-500 hover:text-white transition-colors"
+                      >
+                        <FiTrash2 size={16} />
+                        <span>Delete</span>
+                      </button>
+                    </div>
+                  </div>
+                </motion.div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {showProductModal && (
+          <ProductModal
+            product={editingProduct}
+            onClose={() => {
+              setShowProductModal(false);
+              setEditingProduct(null);
+            }}
+            onSave={() => {
+              fetchProducts();
+              setShowProductModal(false);
+              setEditingProduct(null);
+            }}
+          />
+        )}
+      </div>
+    </div>
+  );
+}
+
+interface ProductModalProps {
+  product: Product | null;
+  onClose: () => void;
+  onSave: () => void;
+}
+
+function ProductModal({ product, onClose, onSave }: ProductModalProps) {
+  const [formData, setFormData] = useState({
+    name: product?.name || '',
+    category: product?.category || 'embroidery',
+    description: product?.description || '',
+    basePrice: product?.basePrice || 0,
+    images: product?.images?.join(', ') || '',
+    customizable: product?.customizable ?? true,
+    colors: product?.options?.colors?.join(', ') || '',
+    sizes: product?.options?.sizes?.join(', ') || '',
+    materials: product?.options?.materials?.join(', ') || '',
+    inStock: product?.inStock ?? true,
+    featured: product?.featured ?? false,
+  });
+
+  const [saving, setSaving] = useState(false);
+  const [uploadMethod, setUploadMethod] = useState<'url' | 'file'>('url');
+  const [imageUrl, setImageUrl] = useState('');
+  const [uploading, setUploading] = useState(false);
+  const [uploadedImages, setUploadedImages] = useState<string[]>(
+    product?.images || []
+  );
+
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setUploading(true);
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+      formData.append('uploadType', 'file');
+
+      const response = await fetch('/api/upload', {
+        method: 'POST',
+        body: formData,
+      });
+
+      const result = await response.json();
+      if (result.success) {
+        const newImages = [...uploadedImages, result.url];
+        setUploadedImages(newImages);
+        setFormData((prev) => ({ ...prev, images: newImages.join(', ') }));
+      } else {
+        alert('Failed to upload image');
+      }
+    } catch (error) {
+      console.error('Error uploading file:', error);
+      alert('Failed to upload image');
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  const handleUrlUpload = async () => {
+    if (!imageUrl.trim()) {
+      alert('Please enter an image URL');
+      return;
+    }
+
+    setUploading(true);
+    try {
+      const uploadFormData = new FormData();
+      uploadFormData.append('imageUrl', imageUrl);
+      uploadFormData.append('uploadType', 'url');
+
+      const response = await fetch('/api/upload', {
+        method: 'POST',
+        body: uploadFormData,
+      });
+
+      const result = await response.json();
+      if (result.success) {
+        const newImages = [...uploadedImages, result.url];
+        setUploadedImages(newImages);
+        setFormData((prev) => ({ ...prev, images: newImages.join(', ') }));
+        setImageUrl('');
+      } else {
+        alert('Failed to upload image from URL');
+      }
+    } catch (error) {
+      console.error('Error uploading from URL:', error);
+      alert('Failed to upload image from URL');
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  const removeImage = (index: number) => {
+    const newImages = uploadedImages.filter((_, i) => i !== index);
+    setUploadedImages(newImages);
+    setFormData((prev) => ({ ...prev, images: newImages.join(', ') }));
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setSaving(true);
+
+    const payload = {
+      name: formData.name,
+      category: formData.category,
+      description: formData.description,
+      basePrice: Number(formData.basePrice),
+      images: formData.images.split(',').map(s => s.trim()).filter(s => s),
+      customizable: formData.customizable,
+      options: {
+        colors: formData.colors.split(',').map(s => s.trim()).filter(s => s),
+        sizes: formData.sizes.split(',').map(s => s.trim()).filter(s => s),
+        materials: formData.materials.split(',').map(s => s.trim()).filter(s => s),
+      },
+      inStock: formData.inStock,
+      featured: formData.featured,
+    };
+
+    try {
+      const url = product ? `/api/products/${product._id}` : '/api/products';
+      const method = product ? 'PUT' : 'POST';
+
+      const response = await fetch(url, {
+        method,
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(payload),
+      });
+
+      const result = await response.json();
+      if (result.success) {
+        onSave();
+      }
+    } catch (error) {
+      console.error('Error saving product:', error);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+      <motion.div
+        initial={{ opacity: 0, scale: 0.95 }}
+        animate={{ opacity: 1, scale: 1 }}
+        className="bg-white rounded-xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto"
+      >
+        <div className="p-6 border-b flex justify-between items-center">
+          <h2 className="font-serif text-2xl text-text-dark">
+            {product ? 'Edit Product' : 'Add New Product'}
+          </h2>
+          <button
+            onClick={onClose}
+            className="text-text-light hover:text-text-dark transition-colors"
+          >
+            <FiX size={24} />
+          </button>
+        </div>
+
+        <form onSubmit={handleSubmit} className="p-6 space-y-4">
+          <div>
+            <label className="block text-sm font-medium text-text-dark mb-1">Product Name</label>
+            <input
+              type="text"
+              value={formData.name}
+              onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-rose"
+              required
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-text-dark mb-1">Category</label>
+            <select
+              value={formData.category}
+              onChange={(e) => setFormData({ ...formData, category: e.target.value as 'embroidery' | 'hanky' | 'accessories' })}
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-rose"
+              required
+            >
+              <option value="embroidery">Embroidery</option>
+              <option value="hanky">Hanky</option>
+              <option value="accessories">Accessories</option>
+            </select>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-text-dark mb-1">Description</label>
+            <textarea
+              value={formData.description}
+              onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-rose"
+              rows={3}
+              required
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-text-dark mb-1">Base Price</label>
+            <input
+              type="number"
+              value={formData.basePrice}
+              onChange={(e) => setFormData({ ...formData, basePrice: Number(e.target.value) })}
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-rose"
+              required
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-text-dark mb-2">Product Images</label>
+
+            <div className="mb-4 flex space-x-2 border-b border-gray-200">
+              <button
+                type="button"
+                onClick={() => setUploadMethod('url')}
+                className={`pb-2 px-4 font-medium transition-colors ${
+                  uploadMethod === 'url'
+                    ? 'border-b-2 border-rose text-rose'
+                    : 'text-text-light hover:text-text-dark'
+                }`}
+              >
+                Upload from URL
+              </button>
+              <button
+                type="button"
+                onClick={() => setUploadMethod('file')}
+                className={`pb-2 px-4 font-medium transition-colors ${
+                  uploadMethod === 'file'
+                    ? 'border-b-2 border-rose text-rose'
+                    : 'text-text-light hover:text-text-dark'
+                }`}
+              >
+                Upload from Device
+              </button>
+            </div>
+
+            {uploadMethod === 'url' ? (
+              <div className="flex gap-2 mb-4">
+                <input
+                  type="text"
+                  value={imageUrl}
+                  onChange={(e) => setImageUrl(e.target.value)}
+                  placeholder="Enter image URL"
+                  className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-rose"
+                />
+                <button
+                  type="button"
+                  onClick={handleUrlUpload}
+                  disabled={uploading}
+                  className="flex items-center gap-2 px-4 py-2 bg-rose text-white rounded-lg hover:bg-opacity-90 transition-colors disabled:opacity-50"
+                >
+                  <FiImage />
+                  {uploading ? 'Uploading...' : 'Add'}
+                </button>
+              </div>
+            ) : (
+              <div className="mb-4">
+                <label className="flex items-center justify-center gap-2 px-4 py-3 border-2 border-dashed border-gray-300 rounded-lg cursor-pointer hover:border-rose transition-colors">
+                  <FiUpload className="text-rose" />
+                  <span className="text-text-light">
+                    {uploading ? 'Uploading...' : 'Choose file from device'}
+                  </span>
+                  <input
+                    type="file"
+                    accept="image/*"
+                    onChange={handleFileUpload}
+                    disabled={uploading}
+                    className="hidden"
+                  />
+                </label>
+              </div>
+            )}
+
+            {uploadedImages.length > 0 && (
+              <div className="grid grid-cols-3 gap-3">
+                {uploadedImages.map((img, index) => (
+                  <div key={index} className="relative group">
+                    <img
+                      src={img}
+                      alt={`Product ${index + 1}`}
+                      className="w-full h-24 object-cover rounded-lg"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => removeImage(index)}
+                      className="absolute top-1 right-1 bg-red-500 text-white p-1 rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
+                    >
+                      <FiX size={16} />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-text-dark mb-1">Colors (comma separated)</label>
+            <input
+              type="text"
+              value={formData.colors}
+              onChange={(e) => setFormData({ ...formData, colors: e.target.value })}
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-rose"
+              placeholder="Red, Blue, Green"
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-text-dark mb-1">Sizes (comma separated)</label>
+            <input
+              type="text"
+              value={formData.sizes}
+              onChange={(e) => setFormData({ ...formData, sizes: e.target.value })}
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-rose"
+              placeholder="Small, Medium, Large"
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-text-dark mb-1">Materials (comma separated)</label>
+            <input
+              type="text"
+              value={formData.materials}
+              onChange={(e) => setFormData({ ...formData, materials: e.target.value })}
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-rose"
+              placeholder="Cotton, Silk, Polyester"
+            />
+          </div>
+
+          <div className="flex items-center space-x-4">
+            <label className="flex items-center space-x-2">
+              <input
+                type="checkbox"
+                checked={formData.customizable}
+                onChange={(e) => setFormData({ ...formData, customizable: e.target.checked })}
+                className="w-4 h-4 text-rose border-gray-300 rounded focus:ring-rose"
+              />
+              <span className="text-sm text-text-dark">Customizable</span>
+            </label>
+
+            <label className="flex items-center space-x-2">
+              <input
+                type="checkbox"
+                checked={formData.inStock}
+                onChange={(e) => setFormData({ ...formData, inStock: e.target.checked })}
+                className="w-4 h-4 text-rose border-gray-300 rounded focus:ring-rose"
+              />
+              <span className="text-sm text-text-dark">In Stock</span>
+            </label>
+
+            <label className="flex items-center space-x-2">
+              <input
+                type="checkbox"
+                checked={formData.featured}
+                onChange={(e) => setFormData({ ...formData, featured: e.target.checked })}
+                className="w-4 h-4 text-rose border-gray-300 rounded focus:ring-rose"
+              />
+              <span className="text-sm text-text-dark">Featured</span>
+            </label>
+          </div>
+
+          <div className="flex space-x-4 pt-4">
+            <button
+              type="button"
+              onClick={onClose}
+              className="flex-1 px-6 py-3 border border-gray-300 text-text-dark rounded-lg hover:bg-gray-50 transition-colors"
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              disabled={saving}
+              className="flex-1 px-6 py-3 bg-rose text-white rounded-lg hover:bg-rose-dark transition-colors disabled:opacity-50"
+            >
+              {saving ? 'Saving...' : (product ? 'Update Product' : 'Add Product')}
+            </button>
+          </div>
+        </form>
+      </motion.div>
+    </div>
+  );
+}
