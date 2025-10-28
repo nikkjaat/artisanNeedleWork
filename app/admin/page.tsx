@@ -1,13 +1,26 @@
-'use client';
+"use client";
 
-import { useState, useEffect } from 'react';
-import { motion } from 'framer-motion';
-import { FiPlus, FiEdit2, FiTrash2, FiX, FiUpload, FiImage } from 'react-icons/fi';
+import { useState, useEffect } from "react";
+import { motion, AnimatePresence } from "framer-motion";
+import {
+  FiPlus,
+  FiEdit2,
+  FiTrash2,
+  FiX,
+  FiUpload,
+  FiImage,
+  FiChevronDown,
+  FiChevronUp,
+  FiPackage,
+  FiUser,
+  FiDollarSign,
+  FiCalendar,
+} from "react-icons/fi";
 
 interface Product {
   _id: string;
   name: string;
-  category: 'embroidery' | 'hanky' | 'accessories';
+  category: "embroidery" | "hanky" | "accessories";
   description: string;
   basePrice: number;
   images: string[];
@@ -56,11 +69,12 @@ interface Order {
 }
 
 export default function AdminPage() {
-  const [activeTab, setActiveTab] = useState<'orders' | 'products'>('orders');
+  const [activeTab, setActiveTab] = useState<"orders" | "products">("orders");
   const [orders, setOrders] = useState<Order[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
+  const [expandedOrder, setExpandedOrder] = useState<string | null>(null);
   const [showProductModal, setShowProductModal] = useState(false);
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
 
@@ -71,13 +85,13 @@ export default function AdminPage() {
 
   const fetchOrders = async () => {
     try {
-      const response = await fetch('/api/orders');
+      const response = await fetch("/api/orders");
       const result = await response.json();
       if (result.success) {
         setOrders(result.orders);
       }
     } catch (error) {
-      console.error('Error fetching orders:', error);
+      console.error("Error fetching orders:", error);
     } finally {
       setLoading(false);
     }
@@ -85,104 +99,129 @@ export default function AdminPage() {
 
   const fetchProducts = async () => {
     try {
-      const response = await fetch('/api/products?all=true');
+      const response = await fetch("/api/products?all=true");
       const result = await response.json();
       if (result.success) {
         setProducts(result.products);
       }
     } catch (error) {
-      console.error('Error fetching products:', error);
+      console.error("Error fetching products:", error);
     }
   };
 
   const updateOrderStatus = async (orderId: string, status: string) => {
     try {
       const response = await fetch(`/api/orders/${orderId}`, {
-        method: 'PUT',
+        method: "PUT",
         headers: {
-          'Content-Type': 'application/json',
+          "Content-Type": "application/json",
         },
         body: JSON.stringify({ status }),
       });
 
       const result = await response.json();
       if (result.success) {
-        setOrders(orders.map(order =>
-          order._id === orderId ? { ...order, status } : order
-        ));
+        setOrders(
+          orders.map((order) =>
+            order._id === orderId ? { ...order, status } : order
+          )
+        );
         if (selectedOrder && selectedOrder._id === orderId) {
           setSelectedOrder({ ...selectedOrder, status });
         }
+        if (expandedOrder === orderId) {
+          // Refresh the expanded order data
+          const updatedOrder = orders.find((order) => order._id === orderId);
+          if (updatedOrder) {
+            setSelectedOrder({ ...updatedOrder, status });
+          }
+        }
       }
     } catch (error) {
-      console.error('Error updating order status:', error);
+      console.error("Error updating order status:", error);
     }
   };
 
   const deleteProduct = async (productId: string) => {
-    if (!confirm('Are you sure you want to delete this product?')) return;
+    if (!confirm("Are you sure you want to delete this product?")) return;
 
     try {
       const response = await fetch(`/api/products/${productId}`, {
-        method: 'DELETE',
+        method: "DELETE",
       });
 
       const result = await response.json();
       if (result.success) {
-        setProducts(products.filter(p => p._id !== productId));
+        setProducts(products.filter((p) => p._id !== productId));
       }
     } catch (error) {
-      console.error('Error deleting product:', error);
+      console.error("Error deleting product:", error);
     }
   };
 
   const getStatusColor = (status: string) => {
     const colors = {
-      pending: 'bg-yellow-100 text-yellow-800',
-      confirmed: 'bg-blue-100 text-blue-800',
-      'in-progress': 'bg-purple-100 text-purple-800',
-      completed: 'bg-green-100 text-green-800',
-      shipped: 'bg-teal-100 text-teal-800',
-      delivered: 'bg-green-200 text-green-900',
-      cancelled: 'bg-red-100 text-red-800',
+      pending: "bg-yellow-100 text-yellow-800",
+      confirmed: "bg-blue-100 text-blue-800",
+      "in-progress": "bg-purple-100 text-purple-800",
+      completed: "bg-green-100 text-green-800",
+      shipped: "bg-teal-100 text-teal-800",
+      delivered: "bg-green-200 text-green-900",
+      cancelled: "bg-red-100 text-red-800",
     };
-    return colors[status as keyof typeof colors] || 'bg-gray-100 text-gray-800';
+    return colors[status as keyof typeof colors] || "bg-gray-100 text-gray-800";
+  };
+
+  const handleOrderClick = (order: Order) => {
+    if (expandedOrder === order._id) {
+      setExpandedOrder(null);
+      setSelectedOrder(null);
+    } else {
+      setExpandedOrder(order._id);
+      setSelectedOrder(order);
+    }
   };
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-rose"></div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 p-6">
+    <div className="min-h-screen bg-gray-50 p-4">
       <div className="max-w-7xl mx-auto">
-        <div className="mb-8">
-          <h1 className="font-serif text-3xl text-text-dark mb-2">Admin Panel</h1>
-          <p className="text-text-light">Manage your products and orders</p>
+        {/* Header */}
+        <div className="mb-6">
+          <h1 className="font-serif text-2xl sm:text-3xl text-text-dark mb-2">
+            Admin Panel
+          </h1>
+          <p className="text-text-light text-sm sm:text-base">
+            Manage your products and orders
+          </p>
         </div>
 
+        {/* Tabs */}
         <div className="mb-6 border-b border-gray-200">
-          <div className="flex space-x-8">
+          <div className="flex space-x-4 sm:space-x-8">
             <button
-              onClick={() => setActiveTab('orders')}
-              className={`pb-4 px-2 font-medium transition-colors ${
-                activeTab === 'orders'
-                  ? 'border-b-2 border-rose text-rose'
-                  : 'text-text-light hover:text-text-dark'
+              onClick={() => setActiveTab("orders")}
+              className={`pb-3 px-1 font-medium transition-colors text-sm sm:text-base ${
+                activeTab === "orders"
+                  ? "border-b-2 border-rose text-rose"
+                  : "text-text-light hover:text-text-dark"
               }`}
             >
               Orders
             </button>
             <button
-              onClick={() => setActiveTab('products')}
-              className={`pb-4 px-2 font-medium transition-colors ${
-                activeTab === 'products'
-                  ? 'border-b-2 border-rose text-rose'
-                  : 'text-text-light hover:text-text-dark'
+              onClick={() => setActiveTab("products")}
+              className={`pb-3 px-1 font-medium transition-colors text-sm sm:text-base ${
+                activeTab === "products"
+                  ? "border-b-2 border-rose text-rose"
+                  : "text-text-light hover:text-text-dark"
               }`}
             >
               Products
@@ -190,174 +229,282 @@ export default function AdminPage() {
           </div>
         </div>
 
-        {activeTab === 'orders' ? (
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            <div className="lg:col-span-2">
-              <div className="bg-white rounded-xl shadow-lg overflow-hidden">
-                <div className="p-6 border-b">
-                  <h2 className="font-serif text-xl text-text-dark">Recent Orders</h2>
-                </div>
+        {activeTab === "orders" ? (
+          <div className="space-y-4">
+            {/* Orders List */}
+            <div className="bg-white rounded-xl shadow-lg overflow-hidden">
+              <div className="p-4 sm:p-6 border-b">
+                <h2 className="font-serif text-lg sm:text-xl text-text-dark">
+                  Recent Orders
+                </h2>
+                <p className="text-text-light text-sm mt-1">
+                  {orders.length} orders found
+                </p>
+              </div>
 
-                <div className="divide-y">
-                  {orders.map((order) => (
+              <div className="divide-y">
+                {orders.map((order) => (
+                  <div key={order._id}>
                     <motion.div
-                      key={order._id}
-                      className={`p-6 cursor-pointer hover:bg-gray-50 transition-colors ${
-                        selectedOrder?._id === order._id ? 'bg-blue-50' : ''
+                      className={`p-4 sm:p-6 cursor-pointer hover:bg-gray-50 transition-colors ${
+                        expandedOrder === order._id ? "bg-blue-50" : ""
                       }`}
-                      onClick={() => setSelectedOrder(order)}
-                      whileHover={{ x: 4 }}
+                      onClick={() => handleOrderClick(order)}
+                      whileHover={{ x: 2 }}
                     >
-                      <div className="flex justify-between items-start mb-2">
-                        <div>
-                          <h3 className="font-medium text-text-dark">#{order.orderNumber}</h3>
-                          <p className="text-sm text-text-light">{order.customerInfo.name}</p>
+                      <div className="flex justify-between items-start mb-3">
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2 mb-1">
+                            <h3 className="font-medium text-text-dark text-sm sm:text-base truncate">
+                              #{order.orderNumber}
+                            </h3>
+                            <span
+                              className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(
+                                order.status
+                              )}`}
+                            >
+                              {order.status}
+                            </span>
+                          </div>
+                          <p className="text-text-light text-sm truncate">
+                            {order.customerInfo.name}
+                          </p>
                         </div>
-                        <span className={`px-3 py-1 rounded-full text-xs font-medium ${getStatusColor(order.status)}`}>
-                          {order.status}
+                        <div className="flex items-center gap-2 ml-2">
+                          {expandedOrder === order._id ? (
+                            <FiChevronUp className="text-text-light" />
+                          ) : (
+                            <FiChevronDown className="text-text-light" />
+                          )}
+                        </div>
+                      </div>
+
+                      <div className="flex justify-between items-center text-xs sm:text-sm text-text-light">
+                        <div className="flex items-center gap-4">
+                          <span className="flex items-center gap-1">
+                            <FiPackage size={12} />
+                            {order.items.length} item(s)
+                          </span>
+                          <span className="flex items-center gap-1">
+                            <FiDollarSign size={12} />₹{order.totalAmount}
+                          </span>
+                        </div>
+                        <span className="flex items-center gap-1">
+                          <FiCalendar size={12} />
+                          {new Date(order.createdAt).toLocaleDateString()}
                         </span>
                       </div>
-
-                      <div className="flex justify-between items-center">
-                        <p className="text-sm text-text-light">
-                          {order.items.length} item(s) • ₹{order.totalAmount}
-                        </p>
-                        <p className="text-xs text-text-light">
-                          {new Date(order.createdAt).toLocaleDateString()}
-                        </p>
-                      </div>
                     </motion.div>
-                  ))}
-                </div>
-              </div>
-            </div>
 
-            <div className="lg:col-span-1">
-              {selectedOrder ? (
-                <div className="bg-white rounded-xl shadow-lg p-6">
-                  <div className="mb-6">
-                    <h3 className="font-serif text-xl text-text-dark mb-2">
-                      Order #{selectedOrder.orderNumber}
-                    </h3>
-                    <span className={`px-3 py-1 rounded-full text-xs font-medium ${getStatusColor(selectedOrder.status)}`}>
-                      {selectedOrder.status}
-                    </span>
-                  </div>
+                    {/* Order Details - Expandable */}
+                    <AnimatePresence>
+                      {expandedOrder === order._id && (
+                        <motion.div
+                          initial={{ opacity: 0, height: 0 }}
+                          animate={{ opacity: 1, height: "auto" }}
+                          exit={{ opacity: 0, height: 0 }}
+                          transition={{ duration: 0.3 }}
+                          className="border-t bg-white"
+                        >
+                          <div className="p-4 sm:p-6 space-y-6">
+                            {/* Customer Information */}
+                            <div>
+                              <h4 className="font-medium text-text-dark mb-3 flex items-center gap-2">
+                                <FiUser className="text-rose" />
+                                Customer Information
+                              </h4>
+                              <div className="text-sm text-text-light space-y-2 bg-gray-50 rounded-lg p-3">
+                                <p>
+                                  <strong>Name:</strong>{" "}
+                                  {order.customerInfo.name}
+                                </p>
+                                <p>
+                                  <strong>Email:</strong>{" "}
+                                  {order.customerInfo.email}
+                                </p>
+                                <p>
+                                  <strong>Phone:</strong>{" "}
+                                  {order.customerInfo.phone}
+                                </p>
+                                <p>
+                                  <strong>Address:</strong>{" "}
+                                  {order.customerInfo.address.street},{" "}
+                                  {order.customerInfo.address.city},{" "}
+                                  {order.customerInfo.address.state} -{" "}
+                                  {order.customerInfo.address.pincode}
+                                </p>
+                              </div>
+                            </div>
 
-                  <div className="mb-6">
-                    <h4 className="font-medium text-text-dark mb-2">Customer Information</h4>
-                    <div className="text-sm text-text-light space-y-1">
-                      <p>{selectedOrder.customerInfo.name}</p>
-                      <p>{selectedOrder.customerInfo.email}</p>
-                      <p>{selectedOrder.customerInfo.phone}</p>
-                      <p>
-                        {selectedOrder.customerInfo.address.street}, {selectedOrder.customerInfo.address.city}
-                        <br />
-                        {selectedOrder.customerInfo.address.state} - {selectedOrder.customerInfo.address.pincode}
-                      </p>
-                    </div>
-                  </div>
+                            {/* Order Items */}
+                            <div>
+                              <h4 className="font-medium text-text-dark mb-3 flex items-center gap-2">
+                                <FiPackage className="text-rose" />
+                                Order Items
+                              </h4>
+                              <div className="space-y-3">
+                                {order.items.map((item, index) => (
+                                  <div
+                                    key={index}
+                                    className="bg-gray-50 rounded-lg p-3 border"
+                                  >
+                                    <div className="flex justify-between items-start mb-2">
+                                      <h5 className="font-medium text-text-dark text-sm">
+                                        {item.productName}
+                                      </h5>
+                                      <span className="text-sm text-text-light">
+                                        ₹{item.price}
+                                      </span>
+                                    </div>
+                                    <p className="text-sm text-text-light mb-2">
+                                      Quantity: {item.quantity}
+                                    </p>
 
-                  <div className="mb-6">
-                    <h4 className="font-medium text-text-dark mb-2">Order Items</h4>
-                    {selectedOrder.items.map((item, index) => (
-                      <div key={index} className="bg-gray-50 rounded-lg p-4 mb-3">
-                        <div className="flex justify-between items-start mb-2">
-                          <h5 className="font-medium text-text-dark">{item.productName}</h5>
-                          <span className="text-sm text-text-light">₹{item.price}</span>
-                        </div>
-                        <p className="text-sm text-text-light mb-2">Quantity: {item.quantity}</p>
+                                    {item.customization.text && (
+                                      <div className="text-xs text-text-light space-y-1 bg-white rounded p-2">
+                                        <p>
+                                          <strong>Text:</strong>{" "}
+                                          {item.customization.text}
+                                        </p>
+                                        <p>
+                                          <strong>Color:</strong>{" "}
+                                          {item.customization.color}
+                                        </p>
+                                        <p>
+                                          <strong>Size:</strong>{" "}
+                                          {item.customization.size}
+                                        </p>
+                                        <p>
+                                          <strong>Material:</strong>{" "}
+                                          {item.customization.material}
+                                        </p>
+                                        {item.customization
+                                          .specialInstructions && (
+                                          <p>
+                                            <strong>Instructions:</strong>{" "}
+                                            {
+                                              item.customization
+                                                .specialInstructions
+                                            }
+                                          </p>
+                                        )}
+                                      </div>
+                                    )}
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
 
-                        {item.customization.text && (
-                          <div className="text-xs text-text-light space-y-1">
-                            <p><strong>Text:</strong> {item.customization.text}</p>
-                            <p><strong>Color:</strong> {item.customization.color}</p>
-                            <p><strong>Size:</strong> {item.customization.size}</p>
-                            <p><strong>Material:</strong> {item.customization.material}</p>
-                            {item.customization.specialInstructions && (
-                              <p><strong>Instructions:</strong> {item.customization.specialInstructions}</p>
-                            )}
+                            {/* Status Update */}
+                            <div>
+                              <h4 className="font-medium text-text-dark mb-2">
+                                Update Status
+                              </h4>
+                              <select
+                                value={order.status}
+                                onChange={(e) =>
+                                  updateOrderStatus(order._id, e.target.value)
+                                }
+                                className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:border-rose"
+                              >
+                                <option value="pending">Pending</option>
+                                <option value="confirmed">Confirmed</option>
+                                <option value="in-progress">In Progress</option>
+                                <option value="completed">Completed</option>
+                                <option value="shipped">Shipped</option>
+                                <option value="delivered">Delivered</option>
+                                <option value="cancelled">Cancelled</option>
+                              </select>
+                            </div>
+
+                            {/* Order Summary */}
+                            <div className="border-t pt-4">
+                              <div className="flex justify-between items-center text-base font-medium">
+                                <span>Total Amount:</span>
+                                <span className="text-rose">
+                                  ₹{order.totalAmount}
+                                </span>
+                              </div>
+                              <p className="text-xs text-text-light mt-1">
+                                Estimated Delivery:{" "}
+                                {new Date(
+                                  order.estimatedDelivery
+                                ).toLocaleDateString()}
+                              </p>
+                            </div>
                           </div>
-                        )}
-                      </div>
-                    ))}
+                        </motion.div>
+                      )}
+                    </AnimatePresence>
                   </div>
-
-                  <div className="mb-6">
-                    <h4 className="font-medium text-text-dark mb-2">Update Status</h4>
-                    <select
-                      value={selectedOrder.status}
-                      onChange={(e) => updateOrderStatus(selectedOrder._id, e.target.value)}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-rose"
-                    >
-                      <option value="pending">Pending</option>
-                      <option value="confirmed">Confirmed</option>
-                      <option value="in-progress">In Progress</option>
-                      <option value="completed">Completed</option>
-                      <option value="shipped">Shipped</option>
-                      <option value="delivered">Delivered</option>
-                      <option value="cancelled">Cancelled</option>
-                    </select>
-                  </div>
-
-                  <div className="border-t pt-4">
-                    <div className="flex justify-between items-center text-lg font-medium">
-                      <span>Total Amount:</span>
-                      <span className="text-rose">₹{selectedOrder.totalAmount}</span>
-                    </div>
-                    <p className="text-xs text-text-light mt-1">
-                      Estimated Delivery: {new Date(selectedOrder.estimatedDelivery).toLocaleDateString()}
-                    </p>
-                  </div>
-                </div>
-              ) : (
-                <div className="bg-white rounded-xl shadow-lg p-6 text-center">
-                  <p className="text-text-light">Select an order to view details</p>
-                </div>
-              )}
+                ))}
+              </div>
             </div>
           </div>
         ) : (
           <div>
-            <div className="mb-6 flex justify-end">
+            {/* Products Header */}
+            <div className="mb-6 flex justify-between items-center">
+              <div>
+                <h2 className="font-serif text-lg sm:text-xl text-text-dark">
+                  Products
+                </h2>
+                <p className="text-text-light text-sm">
+                  {products.length} products
+                </p>
+              </div>
               <button
                 onClick={() => {
                   setEditingProduct(null);
                   setShowProductModal(true);
                 }}
-                className="flex items-center space-x-2 bg-rose text-white px-6 py-3 rounded-lg hover:bg-rose-dark transition-colors"
+                className="flex items-center space-x-2 bg-rose text-white px-4 py-2 sm:px-6 sm:py-3 rounded-lg hover:bg-rose-dark transition-colors text-sm sm:text-base"
               >
-                <FiPlus />
+                <FiPlus size={16} />
                 <span>Add Product</span>
               </button>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {/* Products Grid */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
               {products.map((product) => (
                 <motion.div
                   key={product._id}
                   className="bg-white rounded-xl shadow-lg overflow-hidden"
-                  whileHover={{ y: -4 }}
+                  whileHover={{ y: -2 }}
+                  transition={{ duration: 0.2 }}
                 >
                   {product.images[0] && (
                     <img
                       src={product.images[0]}
                       alt={product.name}
-                      className="w-full h-48 object-cover"
+                      className="w-full h-40 sm:h-48 object-cover"
                     />
                   )}
-                  <div className="p-6">
+                  <div className="p-4 sm:p-6">
                     <div className="flex justify-between items-start mb-2">
-                      <h3 className="font-serif text-lg text-text-dark">{product.name}</h3>
-                      <span className={`px-2 py-1 text-xs rounded ${
-                        product.inStock ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
-                      }`}>
-                        {product.inStock ? 'In Stock' : 'Out of Stock'}
+                      <h3 className="font-serif text-base sm:text-lg text-text-dark line-clamp-2 flex-1 pr-2">
+                        {product.name}
+                      </h3>
+                      <span
+                        className={`px-2 py-1 text-xs rounded flex-shrink-0 ${
+                          product.inStock
+                            ? "bg-green-100 text-green-800"
+                            : "bg-red-100 text-red-800"
+                        }`}
+                      >
+                        {product.inStock ? "In Stock" : "Out of Stock"}
                       </span>
                     </div>
-                    <p className="text-sm text-text-light mb-2">{product.category}</p>
-                    <p className="text-text-light text-sm mb-4 line-clamp-2">{product.description}</p>
-                    <p className="text-rose font-medium mb-4">₹{product.basePrice}</p>
+                    <p className="text-sm text-text-light mb-2 capitalize">
+                      {product.category}
+                    </p>
+                    <p className="text-text-light text-sm mb-3 line-clamp-2">
+                      {product.description}
+                    </p>
+                    <p className="text-rose font-medium mb-4 text-base sm:text-lg">
+                      ₹{product.basePrice}
+                    </p>
 
                     <div className="flex space-x-2">
                       <button
@@ -365,16 +512,16 @@ export default function AdminPage() {
                           setEditingProduct(product);
                           setShowProductModal(true);
                         }}
-                        className="flex-1 flex items-center justify-center space-x-2 border border-rose text-rose px-4 py-2 rounded-lg hover:bg-rose hover:text-white transition-colors"
+                        className="flex-1 flex items-center justify-center space-x-1 sm:space-x-2 border border-rose text-rose px-3 py-2 sm:px-4 sm:py-2 rounded-lg hover:bg-rose hover:text-white transition-colors text-sm"
                       >
-                        <FiEdit2 size={16} />
+                        <FiEdit2 size={14} />
                         <span>Edit</span>
                       </button>
                       <button
                         onClick={() => deleteProduct(product._id)}
-                        className="flex-1 flex items-center justify-center space-x-2 border border-red-500 text-red-500 px-4 py-2 rounded-lg hover:bg-red-500 hover:text-white transition-colors"
+                        className="flex-1 flex items-center justify-center space-x-1 sm:space-x-2 border border-red-500 text-red-500 px-3 py-2 sm:px-4 sm:py-2 rounded-lg hover:bg-red-500 hover:text-white transition-colors text-sm"
                       >
-                        <FiTrash2 size={16} />
+                        <FiTrash2 size={14} />
                         <span>Delete</span>
                       </button>
                     </div>
@@ -412,22 +559,22 @@ interface ProductModalProps {
 
 function ProductModal({ product, onClose, onSave }: ProductModalProps) {
   const [formData, setFormData] = useState({
-    name: product?.name || '',
-    category: product?.category || 'embroidery',
-    description: product?.description || '',
+    name: product?.name || "",
+    category: product?.category || "embroidery",
+    description: product?.description || "",
     basePrice: product?.basePrice || 0,
-    images: product?.images?.join(', ') || '',
+    images: product?.images?.join(", ") || "",
     customizable: product?.customizable ?? true,
-    colors: product?.options?.colors?.join(', ') || '',
-    sizes: product?.options?.sizes?.join(', ') || '',
-    materials: product?.options?.materials?.join(', ') || '',
+    colors: product?.options?.colors?.join(", ") || "",
+    sizes: product?.options?.sizes?.join(", ") || "",
+    materials: product?.options?.materials?.join(", ") || "",
     inStock: product?.inStock ?? true,
     featured: product?.featured ?? false,
   });
 
   const [saving, setSaving] = useState(false);
-  const [uploadMethod, setUploadMethod] = useState<'url' | 'file'>('url');
-  const [imageUrl, setImageUrl] = useState('');
+  const [uploadMethod, setUploadMethod] = useState<"url" | "file">("url");
+  const [imageUrl, setImageUrl] = useState("");
   const [uploading, setUploading] = useState(false);
   const [uploadedImages, setUploadedImages] = useState<string[]>(
     product?.images || []
@@ -440,11 +587,11 @@ function ProductModal({ product, onClose, onSave }: ProductModalProps) {
     setUploading(true);
     try {
       const formData = new FormData();
-      formData.append('file', file);
-      formData.append('uploadType', 'file');
+      formData.append("file", file);
+      formData.append("uploadType", "file");
 
-      const response = await fetch('/api/upload', {
-        method: 'POST',
+      const response = await fetch("/api/upload", {
+        method: "POST",
         body: formData,
       });
 
@@ -452,13 +599,13 @@ function ProductModal({ product, onClose, onSave }: ProductModalProps) {
       if (result.success) {
         const newImages = [...uploadedImages, result.url];
         setUploadedImages(newImages);
-        setFormData((prev) => ({ ...prev, images: newImages.join(', ') }));
+        setFormData((prev) => ({ ...prev, images: newImages.join(", ") }));
       } else {
-        alert('Failed to upload image');
+        alert("Failed to upload image");
       }
     } catch (error) {
-      console.error('Error uploading file:', error);
-      alert('Failed to upload image');
+      console.error("Error uploading file:", error);
+      alert("Failed to upload image");
     } finally {
       setUploading(false);
     }
@@ -466,18 +613,18 @@ function ProductModal({ product, onClose, onSave }: ProductModalProps) {
 
   const handleUrlUpload = async () => {
     if (!imageUrl.trim()) {
-      alert('Please enter an image URL');
+      alert("Please enter an image URL");
       return;
     }
 
     setUploading(true);
     try {
       const uploadFormData = new FormData();
-      uploadFormData.append('imageUrl', imageUrl);
-      uploadFormData.append('uploadType', 'url');
+      uploadFormData.append("imageUrl", imageUrl);
+      uploadFormData.append("uploadType", "url");
 
-      const response = await fetch('/api/upload', {
-        method: 'POST',
+      const response = await fetch("/api/upload", {
+        method: "POST",
         body: uploadFormData,
       });
 
@@ -485,14 +632,14 @@ function ProductModal({ product, onClose, onSave }: ProductModalProps) {
       if (result.success) {
         const newImages = [...uploadedImages, result.url];
         setUploadedImages(newImages);
-        setFormData((prev) => ({ ...prev, images: newImages.join(', ') }));
-        setImageUrl('');
+        setFormData((prev) => ({ ...prev, images: newImages.join(", ") }));
+        setImageUrl("");
       } else {
-        alert('Failed to upload image from URL');
+        alert("Failed to upload image from URL");
       }
     } catch (error) {
-      console.error('Error uploading from URL:', error);
-      alert('Failed to upload image from URL');
+      console.error("Error uploading from URL:", error);
+      alert("Failed to upload image from URL");
     } finally {
       setUploading(false);
     }
@@ -501,7 +648,7 @@ function ProductModal({ product, onClose, onSave }: ProductModalProps) {
   const removeImage = (index: number) => {
     const newImages = uploadedImages.filter((_, i) => i !== index);
     setUploadedImages(newImages);
-    setFormData((prev) => ({ ...prev, images: newImages.join(', ') }));
+    setFormData((prev) => ({ ...prev, images: newImages.join(", ") }));
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -513,25 +660,37 @@ function ProductModal({ product, onClose, onSave }: ProductModalProps) {
       category: formData.category,
       description: formData.description,
       basePrice: Number(formData.basePrice),
-      images: formData.images.split(',').map(s => s.trim()).filter(s => s),
+      images: formData.images
+        .split(",")
+        .map((s) => s.trim())
+        .filter((s) => s),
       customizable: formData.customizable,
       options: {
-        colors: formData.colors.split(',').map(s => s.trim()).filter(s => s),
-        sizes: formData.sizes.split(',').map(s => s.trim()).filter(s => s),
-        materials: formData.materials.split(',').map(s => s.trim()).filter(s => s),
+        colors: formData.colors
+          .split(",")
+          .map((s) => s.trim())
+          .filter((s) => s),
+        sizes: formData.sizes
+          .split(",")
+          .map((s) => s.trim())
+          .filter((s) => s),
+        materials: formData.materials
+          .split(",")
+          .map((s) => s.trim())
+          .filter((s) => s),
       },
       inStock: formData.inStock,
       featured: formData.featured,
     };
 
     try {
-      const url = product ? `/api/products/${product._id}` : '/api/products';
-      const method = product ? 'PUT' : 'POST';
+      const url = product ? `/api/products/${product._id}` : "/api/products";
+      const method = product ? "PUT" : "POST";
 
       const response = await fetch(url, {
         method,
         headers: {
-          'Content-Type': 'application/json',
+          "Content-Type": "application/json",
         },
         body: JSON.stringify(payload),
       });
@@ -541,7 +700,7 @@ function ProductModal({ product, onClose, onSave }: ProductModalProps) {
         onSave();
       }
     } catch (error) {
-      console.error('Error saving product:', error);
+      console.error("Error saving product:", error);
     } finally {
       setSaving(false);
     }
@@ -552,38 +711,52 @@ function ProductModal({ product, onClose, onSave }: ProductModalProps) {
       <motion.div
         initial={{ opacity: 0, scale: 0.95 }}
         animate={{ opacity: 1, scale: 1 }}
-        className="bg-white rounded-xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto"
+        className="bg-white rounded-xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto"
       >
-        <div className="p-6 border-b flex justify-between items-center">
-          <h2 className="font-serif text-2xl text-text-dark">
-            {product ? 'Edit Product' : 'Add New Product'}
+        <div className="sticky top-0 bg-white border-b p-4 sm:p-6 flex justify-between items-center">
+          <h2 className="font-serif text-xl sm:text-2xl text-text-dark">
+            {product ? "Edit Product" : "Add New Product"}
           </h2>
           <button
             onClick={onClose}
-            className="text-text-light hover:text-text-dark transition-colors"
+            className="text-text-light hover:text-text-dark transition-colors p-1"
           >
-            <FiX size={24} />
+            <FiX size={20} />
           </button>
         </div>
 
-        <form onSubmit={handleSubmit} className="p-6 space-y-4">
+        <form onSubmit={handleSubmit} className="p-4 sm:p-6 space-y-4">
           <div>
-            <label className="block text-sm font-medium text-text-dark mb-1">Product Name</label>
+            <label className="block text-sm font-medium text-text-dark mb-1">
+              Product Name
+            </label>
             <input
               type="text"
               value={formData.name}
-              onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-rose"
+              onChange={(e) =>
+                setFormData({ ...formData, name: e.target.value })
+              }
+              className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:border-rose"
               required
             />
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-text-dark mb-1">Category</label>
+            <label className="block text-sm font-medium text-text-dark mb-1">
+              Category
+            </label>
             <select
               value={formData.category}
-              onChange={(e) => setFormData({ ...formData, category: e.target.value as 'embroidery' | 'hanky' | 'accessories' })}
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-rose"
+              onChange={(e) =>
+                setFormData({
+                  ...formData,
+                  category: e.target.value as
+                    | "embroidery"
+                    | "hanky"
+                    | "accessories",
+                })
+              }
+              className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:border-rose"
               required
             >
               <option value="embroidery">Embroidery</option>
@@ -593,80 +766,90 @@ function ProductModal({ product, onClose, onSave }: ProductModalProps) {
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-text-dark mb-1">Description</label>
+            <label className="block text-sm font-medium text-text-dark mb-1">
+              Description
+            </label>
             <textarea
               value={formData.description}
-              onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-rose"
+              onChange={(e) =>
+                setFormData({ ...formData, description: e.target.value })
+              }
+              className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:border-rose"
               rows={3}
               required
             />
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-text-dark mb-1">Base Price</label>
+            <label className="block text-sm font-medium text-text-dark mb-1">
+              Base Price
+            </label>
             <input
               type="number"
               value={formData.basePrice}
-              onChange={(e) => setFormData({ ...formData, basePrice: Number(e.target.value) })}
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-rose"
+              onChange={(e) =>
+                setFormData({ ...formData, basePrice: Number(e.target.value) })
+              }
+              className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:border-rose"
               required
             />
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-text-dark mb-2">Product Images</label>
+            <label className="block text-sm font-medium text-text-dark mb-2">
+              Product Images
+            </label>
 
             <div className="mb-4 flex space-x-2 border-b border-gray-200">
               <button
                 type="button"
-                onClick={() => setUploadMethod('url')}
-                className={`pb-2 px-4 font-medium transition-colors ${
-                  uploadMethod === 'url'
-                    ? 'border-b-2 border-rose text-rose'
-                    : 'text-text-light hover:text-text-dark'
+                onClick={() => setUploadMethod("url")}
+                className={`pb-2 px-3 font-medium transition-colors text-sm ${
+                  uploadMethod === "url"
+                    ? "border-b-2 border-rose text-rose"
+                    : "text-text-light hover:text-text-dark"
                 }`}
               >
-                Upload from URL
+                URL
               </button>
               <button
                 type="button"
-                onClick={() => setUploadMethod('file')}
-                className={`pb-2 px-4 font-medium transition-colors ${
-                  uploadMethod === 'file'
-                    ? 'border-b-2 border-rose text-rose'
-                    : 'text-text-light hover:text-text-dark'
+                onClick={() => setUploadMethod("file")}
+                className={`pb-2 px-3 font-medium transition-colors text-sm ${
+                  uploadMethod === "file"
+                    ? "border-b-2 border-rose text-rose"
+                    : "text-text-light hover:text-text-dark"
                 }`}
               >
-                Upload from Device
+                Upload
               </button>
             </div>
 
-            {uploadMethod === 'url' ? (
-              <div className="flex gap-2 mb-4">
+            {uploadMethod === "url" ? (
+              <div className="flex flex-col sm:flex-row gap-2 mb-4">
                 <input
                   type="text"
                   value={imageUrl}
                   onChange={(e) => setImageUrl(e.target.value)}
                   placeholder="Enter image URL"
-                  className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-rose"
+                  className="flex-1 px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:border-rose"
                 />
                 <button
                   type="button"
                   onClick={handleUrlUpload}
                   disabled={uploading}
-                  className="flex items-center gap-2 px-4 py-2 bg-rose text-white rounded-lg hover:bg-opacity-90 transition-colors disabled:opacity-50"
+                  className="flex items-center gap-2 px-4 py-2 bg-rose text-white rounded-lg hover:bg-opacity-90 transition-colors disabled:opacity-50 text-sm"
                 >
-                  <FiImage />
-                  {uploading ? 'Uploading...' : 'Add'}
+                  <FiImage size={14} />
+                  {uploading ? "Uploading..." : "Add"}
                 </button>
               </div>
             ) : (
               <div className="mb-4">
                 <label className="flex items-center justify-center gap-2 px-4 py-3 border-2 border-dashed border-gray-300 rounded-lg cursor-pointer hover:border-rose transition-colors">
-                  <FiUpload className="text-rose" />
-                  <span className="text-text-light">
-                    {uploading ? 'Uploading...' : 'Choose file from device'}
+                  <FiUpload className="text-rose" size={16} />
+                  <span className="text-text-light text-sm">
+                    {uploading ? "Uploading..." : "Choose file from device"}
                   </span>
                   <input
                     type="file"
@@ -680,20 +863,20 @@ function ProductModal({ product, onClose, onSave }: ProductModalProps) {
             )}
 
             {uploadedImages.length > 0 && (
-              <div className="grid grid-cols-3 gap-3">
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
                 {uploadedImages.map((img, index) => (
                   <div key={index} className="relative group">
                     <img
                       src={img}
                       alt={`Product ${index + 1}`}
-                      className="w-full h-24 object-cover rounded-lg"
+                      className="w-full h-20 object-cover rounded-lg"
                     />
                     <button
                       type="button"
                       onClick={() => removeImage(index)}
                       className="absolute top-1 right-1 bg-red-500 text-white p-1 rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
                     >
-                      <FiX size={16} />
+                      <FiX size={12} />
                     </button>
                   </div>
                 ))}
@@ -701,45 +884,61 @@ function ProductModal({ product, onClose, onSave }: ProductModalProps) {
             )}
           </div>
 
-          <div>
-            <label className="block text-sm font-medium text-text-dark mb-1">Colors (comma separated)</label>
-            <input
-              type="text"
-              value={formData.colors}
-              onChange={(e) => setFormData({ ...formData, colors: e.target.value })}
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-rose"
-              placeholder="Red, Blue, Green"
-            />
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-text-dark mb-1">
+                Colors
+              </label>
+              <input
+                type="text"
+                value={formData.colors}
+                onChange={(e) =>
+                  setFormData({ ...formData, colors: e.target.value })
+                }
+                className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:border-rose"
+                placeholder="Red, Blue, Green"
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-text-dark mb-1">
+                Sizes
+              </label>
+              <input
+                type="text"
+                value={formData.sizes}
+                onChange={(e) =>
+                  setFormData({ ...formData, sizes: e.target.value })
+                }
+                className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:border-rose"
+                placeholder="Small, Medium, Large"
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-text-dark mb-1">
+                Materials
+              </label>
+              <input
+                type="text"
+                value={formData.materials}
+                onChange={(e) =>
+                  setFormData({ ...formData, materials: e.target.value })
+                }
+                className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:border-rose"
+                placeholder="Cotton, Silk, Polyester"
+              />
+            </div>
           </div>
 
-          <div>
-            <label className="block text-sm font-medium text-text-dark mb-1">Sizes (comma separated)</label>
-            <input
-              type="text"
-              value={formData.sizes}
-              onChange={(e) => setFormData({ ...formData, sizes: e.target.value })}
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-rose"
-              placeholder="Small, Medium, Large"
-            />
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-text-dark mb-1">Materials (comma separated)</label>
-            <input
-              type="text"
-              value={formData.materials}
-              onChange={(e) => setFormData({ ...formData, materials: e.target.value })}
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-rose"
-              placeholder="Cotton, Silk, Polyester"
-            />
-          </div>
-
-          <div className="flex items-center space-x-4">
+          <div className="flex flex-wrap gap-4">
             <label className="flex items-center space-x-2">
               <input
                 type="checkbox"
                 checked={formData.customizable}
-                onChange={(e) => setFormData({ ...formData, customizable: e.target.checked })}
+                onChange={(e) =>
+                  setFormData({ ...formData, customizable: e.target.checked })
+                }
                 className="w-4 h-4 text-rose border-gray-300 rounded focus:ring-rose"
               />
               <span className="text-sm text-text-dark">Customizable</span>
@@ -749,7 +948,9 @@ function ProductModal({ product, onClose, onSave }: ProductModalProps) {
               <input
                 type="checkbox"
                 checked={formData.inStock}
-                onChange={(e) => setFormData({ ...formData, inStock: e.target.checked })}
+                onChange={(e) =>
+                  setFormData({ ...formData, inStock: e.target.checked })
+                }
                 className="w-4 h-4 text-rose border-gray-300 rounded focus:ring-rose"
               />
               <span className="text-sm text-text-dark">In Stock</span>
@@ -759,27 +960,33 @@ function ProductModal({ product, onClose, onSave }: ProductModalProps) {
               <input
                 type="checkbox"
                 checked={formData.featured}
-                onChange={(e) => setFormData({ ...formData, featured: e.target.checked })}
+                onChange={(e) =>
+                  setFormData({ ...formData, featured: e.target.checked })
+                }
                 className="w-4 h-4 text-rose border-gray-300 rounded focus:ring-rose"
               />
               <span className="text-sm text-text-dark">Featured</span>
             </label>
           </div>
 
-          <div className="flex space-x-4 pt-4">
+          <div className="flex flex-col sm:flex-row space-y-3 sm:space-y-0 sm:space-x-4 pt-4">
             <button
               type="button"
               onClick={onClose}
-              className="flex-1 px-6 py-3 border border-gray-300 text-text-dark rounded-lg hover:bg-gray-50 transition-colors"
+              className="flex-1 px-6 py-3 border border-gray-300 text-text-dark rounded-lg hover:bg-gray-50 transition-colors text-sm"
             >
               Cancel
             </button>
             <button
               type="submit"
               disabled={saving}
-              className="flex-1 px-6 py-3 bg-rose text-white rounded-lg hover:bg-rose-dark transition-colors disabled:opacity-50"
+              className="flex-1 px-6 py-3 bg-rose text-white rounded-lg hover:bg-rose-dark transition-colors disabled:opacity-50 text-sm"
             >
-              {saving ? 'Saving...' : (product ? 'Update Product' : 'Add Product')}
+              {saving
+                ? "Saving..."
+                : product
+                ? "Update Product"
+                : "Add Product"}
             </button>
           </div>
         </form>
