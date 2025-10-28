@@ -30,6 +30,8 @@ export default function Products() {
   const modalScrollIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const modalRef = useRef<HTMLDivElement>(null);
 
+  
+
   const categories = [
     {
       title: "Embroidery Hoops",

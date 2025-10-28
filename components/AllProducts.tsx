@@ -31,9 +31,12 @@ export default function AllProducts() {
     [key: string]: number;
   }>({});
   const [modalImageIndex, setModalImageIndex] = useState(0);
+  const [isFullScreenImage, setIsFullScreenImage] = useState(false);
+  const [fullScreenImageIndex, setFullScreenImageIndex] = useState(0);
   const scrollIntervalRef = useRef<{ [key: string]: NodeJS.Timeout }>({});
   const modalScrollIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const modalRef = useRef<HTMLDivElement>(null);
+  const fullScreenRef = useRef<HTMLDivElement>(null);
 
   const categories = [
     { id: "all", name: "All Products", emoji: "✨" },
@@ -193,7 +196,11 @@ export default function AllProducts() {
 
   // Auto-scroll for modal images
   useEffect(() => {
-    if (selectedProduct && selectedProduct.images.length > 1) {
+    if (
+      selectedProduct &&
+      selectedProduct.images.length > 1 &&
+      !isFullScreenImage
+    ) {
       modalScrollIntervalRef.current = setInterval(() => {
         setModalImageIndex(
           (prev) => (prev + 1) % selectedProduct.images.length
@@ -206,14 +213,15 @@ export default function AllProducts() {
         clearInterval(modalScrollIntervalRef.current);
       }
     };
-  }, [selectedProduct]);
+  }, [selectedProduct, isFullScreenImage]);
 
   // Close modal when clicking outside
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       if (
         modalRef.current &&
-        !modalRef.current.contains(event.target as Node)
+        !modalRef.current.contains(event.target as Node) &&
+        !isFullScreenImage
       ) {
         handleCloseModal();
       }
@@ -226,9 +234,65 @@ export default function AllProducts() {
 
     return () => {
       document.removeEventListener("mousedown", handleClickOutside);
-      document.body.style.overflow = "unset";
+      if (!isFullScreenImage) {
+        document.body.style.overflow = "unset";
+      }
     };
-  }, [selectedProduct]);
+  }, [selectedProduct, isFullScreenImage]);
+
+  // Close full screen image when clicking outside or pressing Escape
+  useEffect(() => {
+    const handleFullScreenClickOutside = (event: MouseEvent) => {
+      if (
+        fullScreenRef.current &&
+        !fullScreenRef.current.contains(event.target as Node) &&
+        isFullScreenImage
+      ) {
+        handleCloseFullScreen();
+      }
+    };
+
+    const handleEscapeKey = (event: KeyboardEvent) => {
+      if (event.key === "Escape" && isFullScreenImage) {
+        handleCloseFullScreen();
+      }
+    };
+
+    if (isFullScreenImage) {
+      document.addEventListener("mousedown", handleFullScreenClickOutside);
+      document.addEventListener("keydown", handleEscapeKey);
+      document.body.style.overflow = "hidden";
+    }
+
+    return () => {
+      document.removeEventListener("mousedown", handleFullScreenClickOutside);
+      document.removeEventListener("keydown", handleEscapeKey);
+      if (!selectedProduct) {
+        document.body.style.overflow = "unset";
+      }
+    };
+  }, [isFullScreenImage, selectedProduct]);
+
+  // Keyboard navigation for full screen
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (!isFullScreenImage || !selectedProduct) return;
+
+      switch (event.key) {
+        case "ArrowLeft":
+          handlePrevFullScreenImage();
+          break;
+        case "ArrowRight":
+          handleNextFullScreenImage();
+          break;
+        default:
+          break;
+      }
+    };
+
+    document.addEventListener("keydown", handleKeyDown);
+    return () => document.removeEventListener("keydown", handleKeyDown);
+  }, [isFullScreenImage, selectedProduct, fullScreenImageIndex]);
 
   const handleImageHover = (productId: string, enter: boolean) => {
     if (enter) {
@@ -248,19 +312,10 @@ export default function AllProducts() {
     }
   };
 
-  const handleImageClick = (productId: string) => {
-    const product = products.find((p) => p._id === productId);
-    if (product && product.images.length > 1) {
-      setCurrentImageIndex((prev) => ({
-        ...prev,
-        [productId]: ((prev[productId] || 0) + 1) % product.images.length,
-      }));
-    }
-  };
-
   const handleProductClick = (product: Product) => {
     setSelectedProduct(product);
     setModalImageIndex(0);
+    setFullScreenImageIndex(0); // Reset full screen index when opening new product
 
     // Pause auto-scroll for grid items
     if (scrollIntervalRef.current[product._id]) {
@@ -271,6 +326,8 @@ export default function AllProducts() {
   const handleCloseModal = () => {
     setSelectedProduct(null);
     setModalImageIndex(0);
+    setFullScreenImageIndex(0);
+    setIsFullScreenImage(false);
 
     if (modalScrollIntervalRef.current) {
       clearInterval(modalScrollIntervalRef.current);
@@ -279,15 +336,18 @@ export default function AllProducts() {
 
   const handleNextImage = () => {
     if (selectedProduct) {
-      setModalImageIndex((prev) => (prev + 1) % selectedProduct.images.length);
+      const newIndex = (modalImageIndex + 1) % selectedProduct.images.length;
+      setModalImageIndex(newIndex);
     }
   };
 
   const handlePrevImage = () => {
     if (selectedProduct) {
-      setModalImageIndex((prev) =>
-        prev === 0 ? selectedProduct.images.length - 1 : prev - 1
-      );
+      const newIndex =
+        modalImageIndex === 0
+          ? selectedProduct.images.length - 1
+          : modalImageIndex - 1;
+      setModalImageIndex(newIndex);
     }
   };
 
@@ -295,6 +355,58 @@ export default function AllProducts() {
     setCustomizationProduct(product);
     handleCloseModal();
   };
+
+  // Full screen image handlers
+  const handleOpenFullScreen = (index: number) => {
+    setFullScreenImageIndex(index);
+    setIsFullScreenImage(true);
+
+    // Stop auto-scroll when opening full screen
+    if (modalScrollIntervalRef.current) {
+      clearInterval(modalScrollIntervalRef.current);
+    }
+  };
+
+  const handleCloseFullScreen = () => {
+    setIsFullScreenImage(false);
+
+    // Sync modal image with the current full screen image
+    setModalImageIndex(fullScreenImageIndex);
+
+    // Resume auto-scroll if there are multiple images
+    if (selectedProduct && selectedProduct.images.length > 1) {
+      modalScrollIntervalRef.current = setInterval(() => {
+        setModalImageIndex(
+          (prev) => (prev + 1) % selectedProduct.images.length
+        );
+      }, 3000);
+    }
+  };
+
+  const handleNextFullScreenImage = () => {
+    if (selectedProduct) {
+      const newIndex =
+        (fullScreenImageIndex + 1) % selectedProduct.images.length;
+      setFullScreenImageIndex(newIndex);
+    }
+  };
+
+  const handlePrevFullScreenImage = () => {
+    if (selectedProduct) {
+      const newIndex =
+        fullScreenImageIndex === 0
+          ? selectedProduct.images.length - 1
+          : fullScreenImageIndex - 1;
+      setFullScreenImageIndex(newIndex);
+    }
+  };
+
+  // Update full screen index when modal index changes (if full screen is closed)
+  useEffect(() => {
+    if (!isFullScreenImage && selectedProduct) {
+      setFullScreenImageIndex(modalImageIndex);
+    }
+  }, [modalImageIndex, isFullScreenImage, selectedProduct]);
 
   useEffect(() => {
     const fetchProducts = async () => {
@@ -380,7 +492,7 @@ export default function AllProducts() {
             </div>
           </motion.div>
 
-          {/* Products Grid - 2 columns on mobile, 3 on tablet, 4 on desktop */}
+          {/* Products Grid */}
           <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-4 md:gap-6 lg:gap-8">
             {filteredProducts.map((product, index) => {
               const currentIndex = currentImageIndex[product._id] || 0;
@@ -397,7 +509,11 @@ export default function AllProducts() {
                   onClick={() => handleProductClick(product)}
                 >
                   {/* Product Image */}
-                  <div className="relative h-32 sm:h-40 md:h-48 lg:h-56 bg-gray-100 overflow-hidden">
+                  <div
+                    className="relative h-32 sm:h-40 md:h-48 lg:h-56 bg-gray-100 overflow-hidden"
+                    onMouseEnter={() => handleImageHover(product._id, true)}
+                    onMouseLeave={() => handleImageHover(product._id, false)}
+                  >
                     <img
                       src={product.images[currentIndex]}
                       alt={product.name}
@@ -445,7 +561,7 @@ export default function AllProducts() {
                       {product.description}
                     </p>
 
-                    {/* Color Options - Hidden on mobile, shown on tablet+ */}
+                    {/* Color Options */}
                     <div className="hidden sm:flex gap-1 mb-2 sm:mb-3">
                       {product.options.colors.slice(0, 3).map((color, i) => (
                         <div
@@ -526,42 +642,56 @@ export default function AllProducts() {
                 <X className="w-4 h-4 sm:w-5 sm:h-5 text-text-dark" />
               </button>
 
-              {/* Image Gallery */}
+              {/* Image Gallery - UPDATED SECTION */}
               <div className="relative w-full lg:w-1/2 h-48 sm:h-64 md:h-80 lg:h-auto bg-gray-100">
-                <img
+                <motion.img
+                  key={`modal-${modalImageIndex}`}
                   src={selectedProduct.images[modalImageIndex]}
                   alt={selectedProduct.name}
-                  className="w-full h-full object-cover"
+                  className="w-full h-full object-cover cursor-zoom-in"
+                  onClick={() => handleOpenFullScreen(modalImageIndex)}
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  transition={{ duration: 0.3 }}
                 />
 
-                {/* Navigation Arrows */}
+                {/* Navigation Arrows - Only show for multiple images */}
                 {selectedProduct.images.length > 1 && (
                   <>
                     <button
-                      onClick={handlePrevImage}
-                      className="hidden sm:flex absolute left-2 top-1/2 transform -translate-y-1/2 bg-white rounded-full p-2 shadow-lg hover:shadow-xl transition-all"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handlePrevImage();
+                      }}
+                      className="hidden sm:flex absolute left-2 top-1/2 transform -translate-y-1/2 bg-white rounded-full p-2 shadow-lg hover:shadow-xl transition-all z-10"
                     >
                       <ChevronLeft className="w-4 h-4 text-text-dark" />
                     </button>
                     <button
-                      onClick={handleNextImage}
-                      className="hidden sm:flex absolute right-2 top-1/2 transform -translate-y-1/2 bg-white rounded-full p-2 shadow-lg hover:shadow-xl transition-all"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleNextImage();
+                      }}
+                      className="hidden sm:flex absolute right-2 top-1/2 transform -translate-y-1/2 bg-white rounded-full p-2 shadow-lg hover:shadow-xl transition-all z-10"
                     >
                       <ChevronRight className="w-4 h-4 text-text-dark" />
                     </button>
                   </>
                 )}
 
-                {/* Image Indicators */}
+                {/* Image Indicators - Only show for multiple images */}
                 {selectedProduct.images.length > 1 && (
-                  <div className="absolute bottom-3 left-1/2 transform -translate-x-1/2 flex gap-1.5">
+                  <div className="absolute bottom-3 left-1/2 transform -translate-x-1/2 flex gap-1.5 z-10">
                     {selectedProduct.images.map((_, idx) => (
                       <button
                         key={idx}
-                        onClick={() => setModalImageIndex(idx)}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setModalImageIndex(idx);
+                        }}
                         className={`w-2 h-2 rounded-full transition-all ${
                           idx === modalImageIndex
-                            ? "bg-white"
+                            ? "bg-white shadow-sm"
                             : "bg-white bg-opacity-50"
                         }`}
                       />
@@ -569,12 +699,31 @@ export default function AllProducts() {
                   </div>
                 )}
 
-                {/* Mobile Swipe Area */}
+                {/* Image Counter Badge - Show for both single and multiple images */}
+                <div className="absolute top-2 left-2 bg-black bg-opacity-60 text-white px-2 py-1 rounded-full text-xs z-10">
+                  {modalImageIndex + 1} / {selectedProduct.images.length}
+                </div>
+
+                {/* Mobile Touch Navigation - Simple overlay without interfering with main image click */}
                 {selectedProduct.images.length > 1 && (
-                  <div className="sm:hidden absolute inset-0 flex">
-                    <div className="flex-1" onClick={handlePrevImage} />
-                    <div className="flex-1" onClick={handleNextImage} />
-                  </div>
+                  <>
+                    {/* Left side for previous image - only on mobile */}
+                    <div
+                      className="sm:hidden absolute left-0 top-0 bottom-0 w-1/3"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handlePrevImage();
+                      }}
+                    />
+                    {/* Right side for next image - only on mobile */}
+                    <div
+                      className="sm:hidden absolute right-0 top-0 bottom-0 w-1/3"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleNextImage();
+                      }}
+                    />
+                  </>
                 )}
               </div>
 
@@ -695,6 +844,92 @@ export default function AllProducts() {
                 </div>
               </div>
             </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Full Screen Image Viewer */}
+      <AnimatePresence>
+        {isFullScreenImage && selectedProduct && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[60] bg-black bg-opacity-95 backdrop-blur-sm flex items-center justify-center p-4"
+          >
+            <div
+              ref={fullScreenRef}
+              className="relative w-full h-full flex items-center justify-center"
+            >
+              {/* Close Button */}
+              <button
+                onClick={handleCloseFullScreen}
+                className="absolute top-4 right-4 z-10 bg-white bg-opacity-20 hover:bg-opacity-30 rounded-full p-3 transition-all"
+              >
+                <X className="w-6 h-6 text-white" />
+              </button>
+
+              {/* Navigation Arrows */}
+              {selectedProduct.images.length > 1 && (
+                <>
+                  <button
+                    onClick={handlePrevFullScreenImage}
+                    className="absolute left-4 top-1/2 transform -translate-y-1/2 bg-white bg-opacity-20 hover:bg-opacity-30 rounded-full p-3 transition-all z-10"
+                  >
+                    <ChevronLeft className="w-6 h-6 text-white" />
+                  </button>
+                  <button
+                    onClick={handleNextFullScreenImage}
+                    className="absolute right-4 top-1/2 transform -translate-y-1/2 bg-white bg-opacity-20 hover:bg-opacity-30 rounded-full p-3 transition-all z-10"
+                  >
+                    <ChevronRight className="w-6 h-6 text-white" />
+                  </button>
+                </>
+              )}
+
+              {/* Main Image */}
+              <div className="max-w-4xl max-h-full w-full h-full flex items-center justify-center">
+                <motion.img
+                  key={`fullscreen-${fullScreenImageIndex}`}
+                  src={selectedProduct.images[fullScreenImageIndex]}
+                  alt={`${selectedProduct.name} - Image ${
+                    fullScreenImageIndex + 1
+                  }`}
+                  className="max-w-full max-h-full object-contain"
+                  initial={{ opacity: 0, scale: 0.9 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  transition={{ duration: 0.3 }}
+                />
+              </div>
+
+              {/* Image Counter */}
+              <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 bg-black bg-opacity-50 text-white px-4 py-2 rounded-full text-sm font-medium">
+                {fullScreenImageIndex + 1} / {selectedProduct.images.length}
+              </div>
+
+              {/* Thumbnail Strip */}
+              {selectedProduct.images.length > 1 && (
+                <div className="absolute bottom-20 left-1/2 transform -translate-x-1/2 flex gap-2 max-w-full overflow-x-auto px-4 py-2">
+                  {selectedProduct.images.map((image, index) => (
+                    <button
+                      key={index}
+                      onClick={() => setFullScreenImageIndex(index)}
+                      className={`flex-shrink-0 w-12 h-12 rounded-lg overflow-hidden border-2 transition-all ${
+                        index === fullScreenImageIndex
+                          ? "border-white border-opacity-80"
+                          : "border-transparent opacity-60 hover:opacity-80"
+                      }`}
+                    >
+                      <img
+                        src={image}
+                        alt={`Thumbnail ${index + 1}`}
+                        className="w-full h-full object-cover"
+                      />
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
           </motion.div>
         )}
       </AnimatePresence>

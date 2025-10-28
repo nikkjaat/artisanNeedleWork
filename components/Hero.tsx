@@ -2,9 +2,20 @@
 
 import { motion } from "framer-motion";
 import { useRouter } from "next/navigation";
+import { useEffect } from "react";
 
 export default function Hero() {
   const router = useRouter();
+
+  useEffect(() => {
+    document.title = "Home - Handcrafted Gifts";
+    document
+      .querySelector('meta[name="description"]')
+      ?.setAttribute(
+        "content",
+        "Discover unique, handcrafted gifts made with love and care. Perfect for every occasion!"
+      );
+  }, []);
 
   return (
     <section

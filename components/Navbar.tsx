@@ -60,7 +60,7 @@ export default function Navbar() {
   return (
     <nav
       className={`fixed top-0 left-0 right-0 z-50 bg-opacity-95 backdrop-blur-sm shadow-sm ${
-        isOpen ? "bg-white bg-opacity-0" : "bg-white"
+        isOpen ? "bg-transparent" : "bg-white"
       } transition-colors duration-300`}
       ref={navRef}
     >
