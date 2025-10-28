@@ -438,10 +438,10 @@ export default function AllProducts() {
 
                   {/* Product Info */}
                   <div className="p-3 sm:p-4">
-                    <h3 className="font-medium text-text-dark text-sm sm:text-base mb-1 sm:mb-2 line-clamp-2 leading-tight">
+                    <h3 className="font-medium text-text-dark text-sm sm:text-base mb-1 sm:mb-2 line-clamp-2 leading-tight min-h-[2.5rem] sm:min-h-[3rem]">
                       {product.name}
                     </h3>
-                    <p className="text-text-light text-xs sm:text-sm mb-2 sm:mb-3 line-clamp-2 leading-relaxed">
+                    <p className="text-text-light text-xs sm:text-sm mb-2 sm:mb-3 line-clamp-1 leading-relaxed">
                       {product.description}
                     </p>
 
