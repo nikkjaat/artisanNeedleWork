@@ -642,7 +642,7 @@ export default function AllProducts() {
                 <X className="w-4 h-4 sm:w-5 sm:h-5 text-text-dark" />
               </button>
 
-              {/* Image Gallery - UPDATED SECTION */}
+              {/* Image Gallery - SIMPLIFIED VERSION */}
               <div className="relative w-full lg:w-1/2 h-48 sm:h-64 md:h-80 lg:h-auto bg-gray-100">
                 <motion.img
                   key={`modal-${modalImageIndex}`}
@@ -699,30 +699,32 @@ export default function AllProducts() {
                   </div>
                 )}
 
-                {/* Image Counter Badge - Show for both single and multiple images */}
+                {/* Image Counter Badge */}
                 <div className="absolute top-2 left-2 bg-black bg-opacity-60 text-white px-2 py-1 rounded-full text-xs z-10">
                   {modalImageIndex + 1} / {selectedProduct.images.length}
                 </div>
 
-                {/* Mobile Touch Navigation - Simple overlay without interfering with main image click */}
+                {/* Mobile Navigation Buttons - Only show on mobile for multiple images */}
                 {selectedProduct.images.length > 1 && (
                   <>
-                    {/* Left side for previous image - only on mobile */}
-                    <div
-                      className="sm:hidden absolute left-0 top-0 bottom-0 w-1/3"
+                    <button
                       onClick={(e) => {
                         e.stopPropagation();
                         handlePrevImage();
                       }}
-                    />
-                    {/* Right side for next image - only on mobile */}
-                    <div
-                      className="sm:hidden absolute right-0 top-0 bottom-0 w-1/3"
+                      className="sm:hidden absolute left-2 top-1/2 transform -translate-y-1/2 bg-white bg-opacity-80 rounded-full p-2 shadow-lg z-10"
+                    >
+                      <ChevronLeft className="w-4 h-4 text-text-dark" />
+                    </button>
+                    <button
                       onClick={(e) => {
                         e.stopPropagation();
                         handleNextImage();
                       }}
-                    />
+                      className="sm:hidden absolute right-2 top-1/2 transform -translate-y-1/2 bg-white bg-opacity-80 rounded-full p-2 shadow-lg z-10"
+                    >
+                      <ChevronRight className="w-4 h-4 text-text-dark" />
+                    </button>
                   </>
                 )}
               </div>
