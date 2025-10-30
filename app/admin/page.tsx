@@ -15,6 +15,8 @@ import {
   FiUser,
   FiDollarSign,
   FiCalendar,
+  FiShoppingBag,
+  FiMove,
 } from "react-icons/fi";
 
 interface Product {
@@ -50,7 +52,9 @@ interface Order {
     };
   };
   items: Array<{
+    productId: string;
     productName: string;
+    productImage: string;
     quantity: number;
     price: number;
     customization: {
@@ -78,9 +82,17 @@ export default function AdminPage() {
   const [showProductModal, setShowProductModal] = useState(false);
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
 
+  // Real-time updates using polling
   useEffect(() => {
     fetchOrders();
     fetchProducts();
+
+    // Set up polling for real-time updates
+    const interval = setInterval(() => {
+      fetchOrders();
+    }, 5000); // Poll every 5 seconds
+
+    return () => clearInterval(interval);
   }, []);
 
   const fetchOrders = async () => {
@@ -129,13 +141,6 @@ export default function AdminPage() {
         if (selectedOrder && selectedOrder._id === orderId) {
           setSelectedOrder({ ...selectedOrder, status });
         }
-        if (expandedOrder === orderId) {
-          // Refresh the expanded order data
-          const updatedOrder = orders.find((order) => order._id === orderId);
-          if (updatedOrder) {
-            setSelectedOrder({ ...updatedOrder, status });
-          }
-        }
       }
     } catch (error) {
       console.error("Error updating order status:", error);
@@ -182,6 +187,11 @@ export default function AdminPage() {
     }
   };
 
+  const getProductImage = (order: Order) => {
+    // Get the first product image from the order items
+    return order.items[0]?.productImage || "/api/placeholder/80/80";
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
@@ -214,7 +224,7 @@ export default function AdminPage() {
                   : "text-text-light hover:text-text-dark"
               }`}
             >
-              Orders
+              Orders ({orders.length})
             </button>
             <button
               onClick={() => setActiveTab("products")}
@@ -224,7 +234,7 @@ export default function AdminPage() {
                   : "text-text-light hover:text-text-dark"
               }`}
             >
-              Products
+              Products ({products.length})
             </button>
           </div>
         </div>
@@ -252,47 +262,64 @@ export default function AdminPage() {
                       onClick={() => handleOrderClick(order)}
                       whileHover={{ x: 2 }}
                     >
-                      <div className="flex justify-between items-start mb-3">
+                      <div className="flex gap-4">
+                        {/* Product Image */}
+                        <div className="flex-shrink-0">
+                          <img
+                            src={getProductImage(order)}
+                            alt="Product"
+                            className="w-16 h-16 sm:w-20 sm:h-20 object-cover rounded-lg border"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleOrderClick(order);
+                            }}
+                          />
+                        </div>
+
                         <div className="flex-1 min-w-0">
-                          <div className="flex items-center gap-2 mb-1">
-                            <h3 className="font-medium text-text-dark text-sm sm:text-base truncate">
-                              #{order.orderNumber}
-                            </h3>
-                            <span
-                              className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(
-                                order.status
-                              )}`}
-                            >
-                              {order.status}
+                          <div className="flex justify-between items-start mb-2">
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-center gap-2 mb-1">
+                                <h3 className="font-medium text-text-dark text-sm sm:text-base truncate">
+                                  #{order.orderNumber}
+                                </h3>
+                                <span
+                                  className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(
+                                    order.status
+                                  )}`}
+                                >
+                                  {order.status}
+                                </span>
+                              </div>
+                              <p className="text-text-light text-sm truncate">
+                                {order.customerInfo.name}
+                              </p>
+                            </div>
+                            <div className="flex items-center gap-2 ml-2">
+                              {expandedOrder === order._id ? (
+                                <FiChevronUp className="text-text-light" />
+                              ) : (
+                                <FiChevronDown className="text-text-light" />
+                              )}
+                            </div>
+                          </div>
+
+                          <div className="flex justify-between items-center text-xs sm:text-sm text-text-light">
+                            <div className="flex items-center gap-4">
+                              <span className="flex items-center gap-1">
+                                <FiPackage size={12} />
+                                {order.items.length} item(s)
+                              </span>
+                              <span className="flex items-center gap-1">
+                                <FiDollarSign size={12} />₹{order.totalAmount}
+                              </span>
+                            </div>
+                            <span className="flex items-center gap-1">
+                              <FiCalendar size={12} />
+                              {new Date(order.createdAt).toLocaleDateString()}
                             </span>
                           </div>
-                          <p className="text-text-light text-sm truncate">
-                            {order.customerInfo.name}
-                          </p>
                         </div>
-                        <div className="flex items-center gap-2 ml-2">
-                          {expandedOrder === order._id ? (
-                            <FiChevronUp className="text-text-light" />
-                          ) : (
-                            <FiChevronDown className="text-text-light" />
-                          )}
-                        </div>
-                      </div>
-
-                      <div className="flex justify-between items-center text-xs sm:text-sm text-text-light">
-                        <div className="flex items-center gap-4">
-                          <span className="flex items-center gap-1">
-                            <FiPackage size={12} />
-                            {order.items.length} item(s)
-                          </span>
-                          <span className="flex items-center gap-1">
-                            <FiDollarSign size={12} />₹{order.totalAmount}
-                          </span>
-                        </div>
-                        <span className="flex items-center gap-1">
-                          <FiCalendar size={12} />
-                          {new Date(order.createdAt).toLocaleDateString()}
-                        </span>
                       </div>
                     </motion.div>
 
@@ -339,7 +366,7 @@ export default function AdminPage() {
                             {/* Order Items */}
                             <div>
                               <h4 className="font-medium text-text-dark mb-3 flex items-center gap-2">
-                                <FiPackage className="text-rose" />
+                                <FiShoppingBag className="text-rose" />
                                 Order Items
                               </h4>
                               <div className="space-y-3">
@@ -348,48 +375,58 @@ export default function AdminPage() {
                                     key={index}
                                     className="bg-gray-50 rounded-lg p-3 border"
                                   >
-                                    <div className="flex justify-between items-start mb-2">
-                                      <h5 className="font-medium text-text-dark text-sm">
-                                        {item.productName}
-                                      </h5>
-                                      <span className="text-sm text-text-light">
-                                        ₹{item.price}
-                                      </span>
-                                    </div>
-                                    <p className="text-sm text-text-light mb-2">
-                                      Quantity: {item.quantity}
-                                    </p>
+                                    <div className="flex gap-3">
+                                      {/* Item Image */}
+                                      <img
+                                        src={item.productImage}
+                                        alt={item.productName}
+                                        className="w-16 h-16 object-cover rounded-lg border"
+                                      />
+                                      <div className="flex-1">
+                                        <div className="flex justify-between items-start mb-2">
+                                          <h5 className="font-medium text-text-dark text-sm">
+                                            {item.productName}
+                                          </h5>
+                                          <span className="text-sm text-text-light">
+                                            ₹{item.price}
+                                          </span>
+                                        </div>
+                                        <p className="text-sm text-text-light mb-2">
+                                          Quantity: {item.quantity}
+                                        </p>
 
-                                    {item.customization.text && (
-                                      <div className="text-xs text-text-light space-y-1 bg-white rounded p-2">
-                                        <p>
-                                          <strong>Text:</strong>{" "}
-                                          {item.customization.text}
-                                        </p>
-                                        <p>
-                                          <strong>Color:</strong>{" "}
-                                          {item.customization.color}
-                                        </p>
-                                        <p>
-                                          <strong>Size:</strong>{" "}
-                                          {item.customization.size}
-                                        </p>
-                                        <p>
-                                          <strong>Material:</strong>{" "}
-                                          {item.customization.material}
-                                        </p>
-                                        {item.customization
-                                          .specialInstructions && (
-                                          <p>
-                                            <strong>Instructions:</strong>{" "}
-                                            {
-                                              item.customization
-                                                .specialInstructions
-                                            }
-                                          </p>
+                                        {item.customization.text && (
+                                          <div className="text-xs text-text-light space-y-1 bg-white rounded p-2">
+                                            <p>
+                                              <strong>Text:</strong>{" "}
+                                              {item.customization.text}
+                                            </p>
+                                            <p>
+                                              <strong>Color:</strong>{" "}
+                                              {item.customization.color}
+                                            </p>
+                                            <p>
+                                              <strong>Size:</strong>{" "}
+                                              {item.customization.size}
+                                            </p>
+                                            <p>
+                                              <strong>Material:</strong>{" "}
+                                              {item.customization.material}
+                                            </p>
+                                            {item.customization
+                                              .specialInstructions && (
+                                              <p>
+                                                <strong>Instructions:</strong>{" "}
+                                                {
+                                                  item.customization
+                                                    .specialInstructions
+                                                }
+                                              </p>
+                                            )}
+                                          </div>
                                         )}
                                       </div>
-                                    )}
+                                    </div>
                                   </div>
                                 ))}
                               </div>
@@ -563,7 +600,6 @@ function ProductModal({ product, onClose, onSave }: ProductModalProps) {
     category: product?.category || "embroidery",
     description: product?.description || "",
     basePrice: product?.basePrice || 0,
-    images: product?.images?.join(", ") || "",
     customizable: product?.customizable ?? true,
     colors: product?.options?.colors?.join(", ") || "",
     sizes: product?.options?.sizes?.join(", ") || "",
@@ -579,33 +615,47 @@ function ProductModal({ product, onClose, onSave }: ProductModalProps) {
   const [uploadedImages, setUploadedImages] = useState<string[]>(
     product?.images || []
   );
+  const [dragOverIndex, setDragOverIndex] = useState<number | null>(null);
 
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
+    const files = e.target.files;
+    if (!files || files.length === 0) return;
+
+    // Check if adding these files would exceed the 10 image limit
+    if (uploadedImages.length + files.length > 10) {
+      alert("Maximum 10 images allowed per product");
+      return;
+    }
 
     setUploading(true);
     try {
-      const formData = new FormData();
-      formData.append("file", file);
-      formData.append("uploadType", "file");
+      const uploadPromises = Array.from(files).map(async (file) => {
+        const formData = new FormData();
+        formData.append("file", file);
+        formData.append("uploadType", "file");
 
-      const response = await fetch("/api/upload", {
-        method: "POST",
-        body: formData,
+        const response = await fetch("/api/upload", {
+          method: "POST",
+          body: formData,
+        });
+
+        const result = await response.json();
+        if (result.success) {
+          return result.url;
+        } else {
+          throw new Error("Failed to upload image");
+        }
       });
 
-      const result = await response.json();
-      if (result.success) {
-        const newImages = [...uploadedImages, result.url];
-        setUploadedImages(newImages);
-        setFormData((prev) => ({ ...prev, images: newImages.join(", ") }));
-      } else {
-        alert("Failed to upload image");
-      }
+      const newImageUrls = await Promise.all(uploadPromises);
+      const updatedImages = [...uploadedImages, ...newImageUrls];
+      setUploadedImages(updatedImages);
+
+      // Clear the file input
+      e.target.value = "";
     } catch (error) {
-      console.error("Error uploading file:", error);
-      alert("Failed to upload image");
+      console.error("Error uploading files:", error);
+      alert("Failed to upload some images");
     } finally {
       setUploading(false);
     }
@@ -614,6 +664,12 @@ function ProductModal({ product, onClose, onSave }: ProductModalProps) {
   const handleUrlUpload = async () => {
     if (!imageUrl.trim()) {
       alert("Please enter an image URL");
+      return;
+    }
+
+    // Check if adding this URL would exceed the 10 image limit
+    if (uploadedImages.length >= 10) {
+      alert("Maximum 10 images allowed per product");
       return;
     }
 
@@ -632,7 +688,6 @@ function ProductModal({ product, onClose, onSave }: ProductModalProps) {
       if (result.success) {
         const newImages = [...uploadedImages, result.url];
         setUploadedImages(newImages);
-        setFormData((prev) => ({ ...prev, images: newImages.join(", ") }));
         setImageUrl("");
       } else {
         alert("Failed to upload image from URL");
@@ -648,7 +703,48 @@ function ProductModal({ product, onClose, onSave }: ProductModalProps) {
   const removeImage = (index: number) => {
     const newImages = uploadedImages.filter((_, i) => i !== index);
     setUploadedImages(newImages);
-    setFormData((prev) => ({ ...prev, images: newImages.join(", ") }));
+  };
+
+  // Enhanced Drag and Drop handlers
+  const handleDragStart = (e: React.DragEvent, index: number) => {
+    e.dataTransfer.setData("text/plain", index.toString());
+    e.dataTransfer.effectAllowed = "move";
+  };
+
+  const handleDragOver = (e: React.DragEvent, index: number) => {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = "move";
+    setDragOverIndex(index);
+  };
+
+  const handleDragLeave = () => {
+    setDragOverIndex(null);
+  };
+
+  const handleDrop = (e: React.DragEvent, dropIndex: number) => {
+    e.preventDefault();
+    const dragIndex = parseInt(e.dataTransfer.getData("text/plain"));
+
+    if (dragIndex === dropIndex) {
+      setDragOverIndex(null);
+      return;
+    }
+
+    const newImages = [...uploadedImages];
+    const [draggedImage] = newImages.splice(dragIndex, 1);
+    newImages.splice(dropIndex, 0, draggedImage);
+
+    setUploadedImages(newImages);
+    setDragOverIndex(null);
+  };
+
+  const moveImage = (fromIndex: number, toIndex: number) => {
+    if (fromIndex === toIndex) return;
+
+    const newImages = [...uploadedImages];
+    const [movedImage] = newImages.splice(fromIndex, 1);
+    newImages.splice(toIndex, 0, movedImage);
+    setUploadedImages(newImages);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -660,10 +756,7 @@ function ProductModal({ product, onClose, onSave }: ProductModalProps) {
       category: formData.category,
       description: formData.description,
       basePrice: Number(formData.basePrice),
-      images: formData.images
-        .split(",")
-        .map((s) => s.trim())
-        .filter((s) => s),
+      images: uploadedImages, // Use the ordered array directly
       customizable: formData.customizable,
       options: {
         colors: formData.colors
@@ -797,7 +890,7 @@ function ProductModal({ product, onClose, onSave }: ProductModalProps) {
 
           <div>
             <label className="block text-sm font-medium text-text-dark mb-2">
-              Product Images
+              Product Images ({uploadedImages.length}/10)
             </label>
 
             <div className="mb-4 flex space-x-2 border-b border-gray-200">
@@ -837,7 +930,7 @@ function ProductModal({ product, onClose, onSave }: ProductModalProps) {
                 <button
                   type="button"
                   onClick={handleUrlUpload}
-                  disabled={uploading}
+                  disabled={uploading || uploadedImages.length >= 10}
                   className="flex items-center gap-2 px-4 py-2 bg-rose text-white rounded-lg hover:bg-opacity-90 transition-colors disabled:opacity-50 text-sm"
                 >
                   <FiImage size={14} />
@@ -846,16 +939,23 @@ function ProductModal({ product, onClose, onSave }: ProductModalProps) {
               </div>
             ) : (
               <div className="mb-4">
-                <label className="flex items-center justify-center gap-2 px-4 py-3 border-2 border-dashed border-gray-300 rounded-lg cursor-pointer hover:border-rose transition-colors">
-                  <FiUpload className="text-rose" size={16} />
-                  <span className="text-text-light text-sm">
-                    {uploading ? "Uploading..." : "Choose file from device"}
+                <label className="flex flex-col items-center justify-center gap-2 px-4 py-6 border-2 border-dashed border-gray-300 rounded-lg cursor-pointer hover:border-rose transition-colors">
+                  <FiUpload className="text-rose" size={24} />
+                  <span className="text-text-light text-sm text-center">
+                    {uploading
+                      ? "Uploading..."
+                      : "Click to upload or drag and drop"}
+                  </span>
+                  <span className="text-xs text-text-light">
+                    PNG, JPG, GIF up to 10MB (Max {10 - uploadedImages.length}{" "}
+                    images)
                   </span>
                   <input
                     type="file"
                     accept="image/*"
                     onChange={handleFileUpload}
-                    disabled={uploading}
+                    disabled={uploading || uploadedImages.length >= 10}
+                    multiple
                     className="hidden"
                   />
                 </label>
@@ -863,23 +963,100 @@ function ProductModal({ product, onClose, onSave }: ProductModalProps) {
             )}
 
             {uploadedImages.length > 0 && (
-              <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-                {uploadedImages.map((img, index) => (
-                  <div key={index} className="relative group">
-                    <img
-                      src={img}
-                      alt={`Product ${index + 1}`}
-                      className="w-full h-20 object-cover rounded-lg"
-                    />
-                    <button
-                      type="button"
-                      onClick={() => removeImage(index)}
-                      className="absolute top-1 right-1 bg-red-500 text-white p-1 rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
+              <div className="space-y-3">
+                <p className="text-sm text-text-light">
+                  Drag to reorder images. First image will be the main product
+                  image.
+                </p>
+
+                {/* Image Grid with Drag & Drop */}
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                  {uploadedImages.map((img, index) => (
+                    <div
+                      key={index}
+                      className={`relative group border-2 rounded-lg transition-all duration-200 ${
+                        dragOverIndex === index
+                          ? "border-rose border-dashed bg-rose/5"
+                          : "border-gray-200"
+                      }`}
+                      draggable
+                      onDragStart={(e) => handleDragStart(e, index)}
+                      onDragOver={(e) => handleDragOver(e, index)}
+                      onDragLeave={handleDragLeave}
+                      onDrop={(e) => handleDrop(e, index)}
+                      onDragEnd={handleDragLeave}
                     >
-                      <FiX size={12} />
-                    </button>
-                  </div>
-                ))}
+                      {/* Position Badge */}
+                      <div className="absolute top-1 left-1 bg-black/70 text-white text-xs px-2 py-1 rounded z-10">
+                        {index + 1}
+                      </div>
+
+                      {/* Image */}
+                      <img
+                        src={img}
+                        alt={`Product ${index + 1}`}
+                        className="w-full h-24 object-cover rounded-md"
+                      />
+
+                      {/* Drag Handle */}
+                      <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-all duration-200 rounded-md flex items-center justify-center gap-2 opacity-0 group-hover:opacity-100">
+                        <FiMove className="text-white" size={18} />
+                        <span className="text-white text-sm font-medium">
+                          Drag to reorder
+                        </span>
+                      </div>
+
+                      {/* Remove Button */}
+                      <button
+                        type="button"
+                        onClick={() => removeImage(index)}
+                        className="absolute top-1 right-1 bg-red-500 text-white p-1 rounded-full opacity-0 group-hover:opacity-100 transition-opacity z-10"
+                      >
+                        <FiX size={12} />
+                      </button>
+
+                      {/* Move Controls */}
+                      <div className="absolute bottom-1 left-1 right-1 flex justify-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                        <button
+                          type="button"
+                          onClick={() =>
+                            moveImage(index, Math.max(0, index - 1))
+                          }
+                          disabled={index === 0}
+                          className="bg-white/90 text-gray-700 p-1 rounded text-xs disabled:opacity-30"
+                        >
+                          ↑
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() =>
+                            moveImage(
+                              index,
+                              Math.min(uploadedImages.length - 1, index + 1)
+                            )
+                          }
+                          disabled={index === uploadedImages.length - 1}
+                          className="bg-white/90 text-gray-700 p-1 rounded text-xs disabled:opacity-30"
+                        >
+                          ↓
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+
+                {/* Image Order Instructions */}
+                <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
+                  <p className="text-blue-800 text-sm font-medium">
+                    Display Order:
+                  </p>
+                  <p className="text-blue-700 text-xs mt-1">
+                    • Image #1 will be shown as the main product image
+                    <br />
+                    • Drag images to change their display order
+                    <br />• Use arrow buttons for precise control
+                  </p>
+                </div>
               </div>
             )}
           </div>
