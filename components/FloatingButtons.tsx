@@ -8,6 +8,7 @@ import {
   FaYoutube,
   FaPlus,
   FaTimes,
+  FaEnvelope,
 } from "react-icons/fa";
 
 export default function FloatingButtons() {
@@ -55,7 +56,19 @@ export default function FloatingButtons() {
   };
 
   const handleYoutubeClick = () => {
-    window.open("https://youtube.com/@vishakha_baliyan", "_blank");
+    window.open("https://youtube.com/@choudharyvi?si=ZlRQkWqhotZb_0LO", "_blank");
+    setTimeout(() => setIsOpen(false), 1000);
+  };
+
+  const handleEmailClick = () => {
+    const subject = encodeURIComponent("Inquiry about Handcrafted Gifts");
+    const body = encodeURIComponent(
+      "Hi Vishakha,\n\nI'm interested in your handcrafted gifts. Could you please provide more information about:\n\n- Custom order options\n- Pricing and delivery time\n- Available designs\n\nThank you!"
+    );
+    window.open(
+      `mailto:vishakha.baliyan26@gmail.com?subject=${subject}&body=${body}`,
+      "_blank"
+    );
     setTimeout(() => setIsOpen(false), 1000);
   };
 
@@ -103,7 +116,7 @@ export default function FloatingButtons() {
             </motion.button>
 
             {/* WhatsApp */}
-            <motion.button
+            {/* <motion.button
               onClick={handleWhatsAppClick}
               className="w-12 h-12 bg-green-500 text-white rounded-full shadow-lg hover:bg-green-600 transition-all flex items-center justify-center touch-manipulation"
               whileHover={{ scale: 1.1, y: -2 }}
@@ -114,7 +127,21 @@ export default function FloatingButtons() {
               transition={{ duration: 0.2, delay: 0.2 }}
             >
               <FaWhatsapp className="text-xl" />
-            </motion.button>
+            </motion.button> */}
+
+            {/* Email */}
+            {/* <motion.button
+              onClick={handleEmailClick}
+              className="w-12 h-12 bg-gray-600 text-white rounded-full shadow-lg hover:bg-gray-700 transition-all flex items-center justify-center touch-manipulation"
+              whileHover={{ scale: 1.1, y: -2 }}
+              whileTap={{ scale: 0.95 }}
+              initial={{ opacity: 0, scale: 0, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0, y: 20 }}
+              transition={{ duration: 0.2, delay: 0.2 }}
+            >
+              <FaEnvelope className="text-xl" />
+            </motion.button> */}
           </motion.div>
         )}
       </AnimatePresence>

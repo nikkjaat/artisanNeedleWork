@@ -160,7 +160,12 @@ export default function Shop() {
         const data = await response.json();
 
         if (data.success && data.products && data.products.length > 0) {
-          setProducts(data.products);
+          // Ensure images is always an array
+          const productsWithImages = data.products.map((product: Product) => ({
+            ...product,
+            images: Array.isArray(product.images) ? product.images : [],
+          }));
+          setProducts(productsWithImages);
         } else {
           setProducts(sampleProducts);
         }
@@ -252,7 +257,7 @@ export default function Shop() {
             >
               <div className="relative h-64 bg-gradient-soft">
                 <img
-                  src={product.images[0]}
+                  src={product.images?.[0] || "/placeholder.png"}
                   alt={product.name}
                   className="w-full h-full object-cover"
                 />

@@ -72,7 +72,6 @@ const OrderSchema = new mongoose.Schema(
       },
       whatsappNumber: {
         type: String,
-        required: true,
       },
       address: {
         street: String,

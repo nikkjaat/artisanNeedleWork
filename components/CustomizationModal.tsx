@@ -13,8 +13,8 @@ interface Product {
   images: string[];
   customizable: boolean;
   options: {
-    colors: string[];
     sizes: string[];
+    sizeUnit?: "inch" | "cm" | "m";
     materials: string[];
   };
 }
@@ -49,7 +49,6 @@ export default function CustomizationModal({
     },
     customization: {
       text: "",
-      color: product.options.colors[0] || "",
       size: product.options.sizes[0] || "",
       material: product.options.materials[0] || "",
       specialInstructions: "",
@@ -235,8 +234,10 @@ Quantity: ${formData.quantity}
 ${
   product.customizable
     ? `Customization: ${formData.customization.text}
-Color: ${formData.customization.color}
-Size: ${formData.customization.size}
+
+Size: ${formData.customization.size} ${
+        product.options.sizeUnit ? `(${product.options.sizeUnit})` : ""
+      }
 Material: ${formData.customization.material}
 Special Instructions: ${formData.customization.specialInstructions}`
     : ""
@@ -413,30 +414,9 @@ Address: ${formData.customerInfo.address.street}, ${
                   <div className="grid grid-cols-2 gap-3">
                     <div>
                       <label className="block text-sm font-medium text-text-dark mb-2">
-                        Color
-                      </label>
-                      <select
-                        value={formData.customization.color}
-                        onChange={(e) =>
-                          handleInputChange(
-                            "customization",
-                            "color",
-                            e.target.value
-                          )
-                        }
-                        className="w-full px-3 py-2.5 text-sm rounded-xl border-2 border-gray-200 focus:border-rose focus:outline-none transition-colors"
-                      >
-                        {product.options.colors.map((color) => (
-                          <option key={color} value={color}>
-                            {color}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-
-                    <div>
-                      <label className="block text-sm font-medium text-text-dark mb-2">
-                        Size
+                        Size{" "}
+                        {product.options.sizeUnit &&
+                          `(${product.options.sizeUnit})`}
                       </label>
                       <select
                         value={formData.customization.size}
@@ -669,7 +649,7 @@ Address: ${formData.customerInfo.address.street}, ${
 
                     <div>
                       <label className="block text-sm font-medium text-text-dark mb-2">
-                        WhatsApp *
+                        WhatsApp 
                       </label>
                       <input
                         type="tel"

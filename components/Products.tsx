@@ -5,6 +5,7 @@ import { useState, useEffect, useRef } from "react";
 import { GiSewingNeedle, GiLipstick } from "react-icons/gi";
 import { GiHairStrands } from "react-icons/gi";
 import { X, ChevronLeft, ChevronRight } from "lucide-react";
+import CustomizationModal from "./CustomizationModal";
 
 interface Product {
   _id: string;
@@ -15,8 +16,8 @@ interface Product {
   images: string[];
   customizable: boolean;
   options: {
-    colors: string[];
     sizes: string[];
+    sizeUnit?: "inch" | "cm" | "m";
     materials: string[];
   };
   featured: boolean;
@@ -25,6 +26,8 @@ interface Product {
 export default function Products() {
   const [featuredProducts, setFeaturedProducts] = useState<Product[]>([]);
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
+  const [customizationProduct, setCustomizationProduct] =
+    useState<Product | null>(null);
   const [modalImageIndex, setModalImageIndex] = useState(0);
   const [isFullScreenImage, setIsFullScreenImage] = useState(false);
   const [fullScreenImageIndex, setFullScreenImageIndex] = useState(0);
@@ -84,6 +87,11 @@ export default function Products() {
       });
     };
   }, [featuredProducts]);
+
+  const handleCustomize = (product: Product) => {
+    setCustomizationProduct(product);
+    handleCloseModal();
+  };
 
   // Auto-scroll for modal images
   useEffect(() => {
@@ -301,10 +309,13 @@ export default function Products() {
         const data = await response.json();
 
         if (data.success && data.products && data.products.length > 0) {
-          // Filter only featured products
-          const featured = data.products.filter(
-            (product: Product) => product.featured === true
-          );
+          // Filter only featured products and ensure images is an array
+          const featured = data.products
+            .filter((product: Product) => product.featured === true)
+            .map((product: Product) => ({
+              ...product,
+              images: Array.isArray(product.images) ? product.images : [],
+            }));
           setFeaturedProducts(featured);
         } else {
           // If no featured products, show empty array
@@ -360,8 +371,11 @@ export default function Products() {
           {featuredProducts.length > 0 ? (
             <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6 md:gap-8">
               {featuredProducts.map((product, index) => {
+                const images = Array.isArray(product.images)
+                  ? product.images
+                  : [];
                 const currentIndex = currentImageIndex[product._id] || 0;
-                const hasMultipleImages = product.images.length > 1;
+                const hasMultipleImages = images.length > 1;
 
                 return (
                   <motion.div
@@ -380,7 +394,7 @@ export default function Products() {
                       onMouseLeave={() => handleImageHover(product._id, false)}
                     >
                       <img
-                        src={product.images[currentIndex]}
+                        src={images[currentIndex] || "/placeholder.png"}
                         alt={product.name}
                         className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
                       />
@@ -398,7 +412,7 @@ export default function Products() {
                       {/* Image Indicators */}
                       {hasMultipleImages && (
                         <div className="absolute bottom-2 left-1/2 transform -translate-x-1/2 flex gap-1">
-                          {product.images.map((_, idx) => (
+                          {images.map((_, idx) => (
                             <div
                               key={idx}
                               className={`w-1.5 h-1.5 rounded-full transition-all ${
@@ -414,7 +428,7 @@ export default function Products() {
                       {/* Multiple Images Badge */}
                       {hasMultipleImages && (
                         <div className="absolute top-2 left-10 bg-black bg-opacity-60 text-white px-1.5 py-0.5 rounded-full text-xs">
-                          {product.images.length}
+                          {images.length}
                         </div>
                       )}
 
@@ -433,27 +447,6 @@ export default function Products() {
                       <p className="text-text-light text-xs sm:text-sm mb-2 sm:mb-3 line-clamp-1 leading-relaxed">
                         {product.description}
                       </p>
-
-                      {/* Color Options */}
-                      <div className="flex gap-1 sm:gap-2 mb-2 sm:mb-3">
-                        {product.options.colors.slice(0, 3).map((color, i) => (
-                          <div
-                            key={i}
-                            className="w-3 h-3 sm:w-4 sm:h-4 rounded-full border border-gray-300"
-                            style={{
-                              backgroundColor: color
-                                .toLowerCase()
-                                .replace(" ", ""),
-                            }}
-                            title={color}
-                          />
-                        ))}
-                        {product.options.colors.length > 3 && (
-                          <div className="w-3 h-3 sm:w-4 sm:h-4 rounded-full border border-gray-300 bg-gray-100 flex items-center justify-center text-xs text-text-light">
-                            +{product.options.colors.length - 3}
-                          </div>
-                        )}
-                      </div>
 
                       {/* View Details Button */}
                       <motion.button
@@ -531,7 +524,10 @@ export default function Products() {
               <div className="relative w-full lg:w-1/2 h-48 sm:h-64 md:h-80 lg:h-auto bg-gray-100">
                 <motion.img
                   key={`modal-${modalImageIndex}`}
-                  src={selectedProduct.images[modalImageIndex]}
+                  src={
+                    selectedProduct.images?.[modalImageIndex] ||
+                    "/placeholder.png"
+                  }
                   alt={selectedProduct.name}
                   className="w-full h-full object-cover cursor-zoom-in"
                   onClick={() => handleOpenFullScreen(modalImageIndex)}
@@ -644,38 +640,13 @@ export default function Products() {
 
                   {/* Options */}
                   <div className="space-y-3 sm:space-y-4">
-                    {/* Colors */}
-                    <div>
-                      <h3 className="font-medium text-text-dark mb-2 text-base sm:text-lg">
-                        Available Colors
-                      </h3>
-                      <div className="flex flex-wrap gap-2">
-                        {selectedProduct.options.colors.map((color, index) => (
-                          <div
-                            key={index}
-                            className="flex items-center gap-2 px-2 py-1.5 sm:px-3 sm:py-2 rounded-full border border-gray-200"
-                          >
-                            <div
-                              className="w-3 h-3 sm:w-4 sm:h-4 rounded-full"
-                              style={{
-                                backgroundColor: color
-                                  .toLowerCase()
-                                  .replace(" ", ""),
-                              }}
-                            />
-                            <span className="text-xs sm:text-sm text-text-dark">
-                              {color}
-                            </span>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-
                     {/* Sizes */}
                     {selectedProduct.options.sizes.length > 0 && (
                       <div>
                         <h3 className="font-medium text-text-dark mb-2 text-base sm:text-lg">
-                          Sizes
+                          Sizes{" "}
+                          {selectedProduct.options.sizeUnit &&
+                            `(${selectedProduct.options.sizeUnit})`}
                         </h3>
                         <div className="flex flex-wrap gap-1.5">
                           {selectedProduct.options.sizes.map((size, index) => (
@@ -715,7 +686,7 @@ export default function Products() {
                   {/* Action Buttons */}
                   <div className="flex flex-col sm:flex-row gap-2 sm:gap-3 pt-3 sm:pt-4">
                     <motion.button
-                      onClick={handleCloseModal}
+                      onClick={() => handleCustomize(selectedProduct)}
                       className="flex-1 px-4 py-3 sm:px-6 sm:py-4 bg-rose text-white rounded-xl sm:rounded-2xl font-medium hover:shadow-lg transition-all text-sm sm:text-base"
                       whileHover={{ scale: 1.02 }}
                       whileTap={{ scale: 0.98 }}
@@ -783,7 +754,10 @@ export default function Products() {
               <div className="max-w-4xl max-h-full w-full h-full flex items-center justify-center">
                 <motion.img
                   key={`fullscreen-${fullScreenImageIndex}`}
-                  src={selectedProduct.images[fullScreenImageIndex]}
+                  src={
+                    selectedProduct.images?.[fullScreenImageIndex] ||
+                    "/placeholder.png"
+                  }
                   alt={`${selectedProduct.name} - Image ${
                     fullScreenImageIndex + 1
                   }`}
@@ -825,6 +799,13 @@ export default function Products() {
           </motion.div>
         )}
       </AnimatePresence>
+
+      {customizationProduct && (
+        <CustomizationModal
+          product={customizationProduct}
+          onClose={() => setCustomizationProduct(null)}
+        />
+      )}
     </>
   );
 }

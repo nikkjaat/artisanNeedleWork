@@ -415,7 +415,12 @@ export default function AllProducts() {
         const data = await response.json();
 
         if (data.success && data.products && data.products.length > 0) {
-          setProducts(data.products);
+          // Ensure images is always an array
+          const productsWithImages = data.products.map((product: Product) => ({
+            ...product,
+            images: Array.isArray(product.images) ? product.images : [],
+          }));
+          setProducts(productsWithImages);
         } else {
           setProducts(sampleProducts);
         }
@@ -495,8 +500,11 @@ export default function AllProducts() {
           {/* Products Grid */}
           <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-4 md:gap-6 lg:gap-8">
             {filteredProducts.map((product, index) => {
+              const images = Array.isArray(product.images)
+                ? product.images
+                : [];
               const currentIndex = currentImageIndex[product._id] || 0;
-              const hasMultipleImages = product.images.length > 1;
+              const hasMultipleImages = images.length > 1;
 
               return (
                 <motion.div
@@ -515,7 +523,7 @@ export default function AllProducts() {
                     onMouseLeave={() => handleImageHover(product._id, false)}
                   >
                     <img
-                      src={product.images[currentIndex]}
+                      src={images[currentIndex] || "/placeholder.png"}
                       alt={product.name}
                       className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
                     />
@@ -528,7 +536,7 @@ export default function AllProducts() {
                     {/* Image Indicators */}
                     {hasMultipleImages && (
                       <div className="absolute bottom-2 left-1/2 transform -translate-x-1/2 flex gap-1">
-                        {product.images.map((_, idx) => (
+                        {images.map((_, idx) => (
                           <div
                             key={idx}
                             className={`w-1.5 h-1.5 rounded-full transition-all ${
@@ -544,7 +552,7 @@ export default function AllProducts() {
                     {/* Multiple Images Badge */}
                     {hasMultipleImages && (
                       <div className="absolute top-2 left-2 bg-black bg-opacity-60 text-white px-1.5 py-0.5 rounded-full text-xs">
-                        {product.images.length}
+                        {images.length}
                       </div>
                     )}
 
@@ -560,27 +568,6 @@ export default function AllProducts() {
                     <p className="text-text-light text-xs sm:text-sm mb-2 sm:mb-3 line-clamp-1 leading-relaxed">
                       {product.description}
                     </p>
-
-                    {/* Color Options */}
-                    <div className="hidden sm:flex gap-1 mb-2 sm:mb-3">
-                      {product.options.colors.slice(0, 3).map((color, i) => (
-                        <div
-                          key={i}
-                          className="w-3 h-3 sm:w-4 sm:h-4 rounded-full border border-gray-300"
-                          style={{
-                            backgroundColor: color
-                              .toLowerCase()
-                              .replace(" ", ""),
-                          }}
-                          title={color}
-                        />
-                      ))}
-                      {product.options.colors.length > 3 && (
-                        <div className="w-3 h-3 sm:w-4 sm:h-4 rounded-full border border-gray-300 bg-gray-100 flex items-center justify-center text-xs text-text-light">
-                          +{product.options.colors.length - 3}
-                        </div>
-                      )}
-                    </div>
 
                     {/* View Details Button */}
                     <motion.button
@@ -646,7 +633,10 @@ export default function AllProducts() {
               <div className="relative w-full lg:w-1/2 h-48 sm:h-64 md:h-80 lg:h-auto bg-gray-100">
                 <motion.img
                   key={`modal-${modalImageIndex}`}
-                  src={selectedProduct.images[modalImageIndex]}
+                  src={
+                    selectedProduct.images?.[modalImageIndex] ||
+                    "/placeholder.png"
+                  }
                   alt={selectedProduct.name}
                   className="w-full h-full object-cover cursor-zoom-in"
                   onClick={() => handleOpenFullScreen(modalImageIndex)}
@@ -754,33 +744,6 @@ export default function AllProducts() {
 
                   {/* Options */}
                   <div className="space-y-3 sm:space-y-4">
-                    {/* Colors */}
-                    <div>
-                      <h3 className="font-medium text-text-dark mb-2 text-base sm:text-lg">
-                        Available Colors
-                      </h3>
-                      <div className="flex flex-wrap gap-2">
-                        {selectedProduct.options.colors.map((color, index) => (
-                          <div
-                            key={index}
-                            className="flex items-center gap-2 px-2 py-1.5 sm:px-3 sm:py-2 rounded-full border border-gray-200"
-                          >
-                            <div
-                              className="w-3 h-3 sm:w-4 sm:h-4 rounded-full"
-                              style={{
-                                backgroundColor: color
-                                  .toLowerCase()
-                                  .replace(" ", ""),
-                              }}
-                            />
-                            <span className="text-xs sm:text-sm text-text-dark">
-                              {color}
-                            </span>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-
                     {/* Sizes */}
                     {selectedProduct.options.sizes.length > 0 && (
                       <div>
@@ -893,7 +856,10 @@ export default function AllProducts() {
               <div className="max-w-4xl max-h-full w-full h-full flex items-center justify-center">
                 <motion.img
                   key={`fullscreen-${fullScreenImageIndex}`}
-                  src={selectedProduct.images[fullScreenImageIndex]}
+                  src={
+                    selectedProduct.images?.[fullScreenImageIndex] ||
+                    "/placeholder.png"
+                  }
                   alt={`${selectedProduct.name} - Image ${
                     fullScreenImageIndex + 1
                   }`}

@@ -663,6 +663,7 @@ interface OrderProductsPopupProps {
 
 function OrderProductsPopup({ order, onClose }: OrderProductsPopupProps) {
   const getProductImageForItem = (item: any) => {
+    console.log(item)
     return item.productId?.images?.[0] || "/api/placeholder/120/120";
   };
 
