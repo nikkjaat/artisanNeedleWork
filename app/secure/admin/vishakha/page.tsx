@@ -19,6 +19,7 @@ import {
   FiMove,
   FiInfo,
 } from "react-icons/fi";
+import { get } from "node:http";
 
 interface Product {
   _id: string;
@@ -193,8 +194,8 @@ export default function AdminPage() {
     }
   };
 
-  const getProductImage = (order: Order) => {
-    return order.items[0]?.productId.images[0] || "/api/placeholder/80/80";
+  const getProductImageForItem = (item: any) => {
+    return item.productId?.images?.[0] || "/api/placeholder/120/120";
   };
 
   const handleOrderImageClick = (order: Order, e: React.MouseEvent) => {
@@ -282,7 +283,7 @@ export default function AdminPage() {
                             onClick={(e) => handleOrderImageClick(order, e)}
                             onError={(e) => {
                               const target = e.target as HTMLImageElement;
-                              target.src = "/api/placeholder/80/80";
+                              target.src = "";
                             }}
                           />
                         </div>
@@ -642,6 +643,18 @@ export default function AdminPage() {
   );
 }
 
+const getProductImage = (item: any) => {
+  // console.log(item.items[0].productId.images[0])
+  if (
+    !item.items[0].productId ||
+    !Array.isArray(item.items[0].productId.images) ||
+    item.items[0].productId.images.length === 0
+  ) {
+    return "/api/placeholder/120/120";
+  }
+  return item.items[0].productId.images[0];
+};
+
 // Order Products Popup Component
 interface OrderProductsPopupProps {
   order: Order;
@@ -649,6 +662,10 @@ interface OrderProductsPopupProps {
 }
 
 function OrderProductsPopup({ order, onClose }: OrderProductsPopupProps) {
+  const getProductImageForItem = (item: any) => {
+    return item.productId?.images?.[0] || "/api/placeholder/120/120";
+  };
+
   return (
     <div
       className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4"
@@ -691,9 +708,7 @@ function OrderProductsPopup({ order, onClose }: OrderProductsPopupProps) {
                   {/* Product Image */}
                   <div className="flex-shrink-0">
                     <img
-                      src={
-                        item.productId.images[0] || "/api/placeholder/120/120"
-                      }
+                      src={getProductImageForItem(item)}
                       alt={item.productName}
                       className="w-20 h-20 sm:w-24 sm:h-24 object-cover rounded-lg border"
                       onError={(e) => {
