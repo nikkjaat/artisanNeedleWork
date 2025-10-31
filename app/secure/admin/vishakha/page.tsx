@@ -17,6 +17,7 @@ import {
   FiCalendar,
   FiShoppingBag,
   FiMove,
+  FiInfo,
 } from "react-icons/fi";
 
 interface Product {
@@ -28,8 +29,8 @@ interface Product {
   images: string[];
   customizable: boolean;
   options: {
-    colors: string[];
     sizes: string[];
+    sizeUnit?: "inch" | "cm" | "m";
     materials: string[];
   };
   inStock: boolean;
@@ -81,6 +82,10 @@ export default function AdminPage() {
   const [expandedOrder, setExpandedOrder] = useState<string | null>(null);
   const [showProductModal, setShowProductModal] = useState(false);
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
+  const [selectedProductDetail, setSelectedProductDetail] =
+    useState<Product | null>(null);
+  const [showOrderProductsPopup, setShowOrderProductsPopup] =
+    useState<Order | null>(null);
 
   // Real-time updates using polling
   useEffect(() => {
@@ -99,6 +104,7 @@ export default function AdminPage() {
     try {
       const response = await fetch("/api/orders");
       const result = await response.json();
+
       if (result.success) {
         setOrders(result.orders);
       }
@@ -188,8 +194,12 @@ export default function AdminPage() {
   };
 
   const getProductImage = (order: Order) => {
-    // Get the first product image from the order items
-    return order.items[0]?.productImage || "/api/placeholder/80/80";
+    return order.items[0]?.productId.images[0] || "/api/placeholder/80/80";
+  };
+
+  const handleOrderImageClick = (order: Order, e: React.MouseEvent) => {
+    e.stopPropagation();
+    setShowOrderProductsPopup(order);
   };
 
   if (loading) {
@@ -201,7 +211,7 @@ export default function AdminPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 p-4">
+    <div className="min-h-screen bg-gray-50 p-4 pt-12 mt-12">
       <div className="max-w-7xl mx-auto">
         {/* Header */}
         <div className="mb-6">
@@ -268,10 +278,11 @@ export default function AdminPage() {
                           <img
                             src={getProductImage(order)}
                             alt="Product"
-                            className="w-16 h-16 sm:w-20 sm:h-20 object-cover rounded-lg border"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleOrderClick(order);
+                            className="w-16 h-16 sm:w-20 sm:h-20 object-cover rounded-lg border cursor-pointer hover:opacity-80 transition-opacity"
+                            onClick={(e) => handleOrderImageClick(order, e)}
+                            onError={(e) => {
+                              const target = e.target as HTMLImageElement;
+                              target.src = "/api/placeholder/80/80";
                             }}
                           />
                         </div>
@@ -369,18 +380,27 @@ export default function AdminPage() {
                                 <FiShoppingBag className="text-rose" />
                                 Order Items
                               </h4>
-                              <div className="space-y-3">
+                              <div className="space-y-3 cursor-pointer">
                                 {order.items.map((item, index) => (
                                   <div
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      handleOrderImageClick(order, e);
+                                    }}
                                     key={index}
                                     className="bg-gray-50 rounded-lg p-3 border"
                                   >
                                     <div className="flex gap-3">
                                       {/* Item Image */}
                                       <img
-                                        src={item.productImage}
+                                        src={getProductImage(order)}
                                         alt={item.productName}
-                                        className="w-16 h-16 object-cover rounded-lg border"
+                                        className="w-16 h-16 object-cover rounded-lg border  hover:opacity-80 transition-opacity"
+                                        onError={(e) => {
+                                          const target =
+                                            e.target as HTMLImageElement;
+                                          target.src = "/api/placeholder/80/80";
+                                        }}
                                       />
                                       <div className="flex-1">
                                         <div className="flex justify-between items-start mb-2">
@@ -511,12 +531,26 @@ export default function AdminPage() {
                   whileHover={{ y: -2 }}
                   transition={{ duration: 0.2 }}
                 >
-                  {product.images[0] && (
-                    <img
-                      src={product.images[0]}
-                      alt={product.name}
-                      className="w-full h-40 sm:h-48 object-cover"
-                    />
+                  {product.images &&
+                    product.images.length > 0 &&
+                    product.images[0] && (
+                      <img
+                        src={product?.images[0]}
+                        alt={product.name}
+                        className="w-full h-40 sm:h-48 object-cover cursor-pointer hover:opacity-90 transition-opacity"
+                        onClick={() => setSelectedProductDetail(product)}
+                        onError={(e) => {
+                          const target = e.target as HTMLImageElement;
+                          target.src = "/api/placeholder/400/300";
+                        }}
+                      />
+                    )}
+                  {(!product.images ||
+                    product.images.length === 0 ||
+                    !product.images[0]) && (
+                    <div className="w-full h-40 sm:h-48 bg-gray-100 flex items-center justify-center">
+                      <span className="text-gray-400 text-sm">No image</span>
+                    </div>
                   )}
                   <div className="p-4 sm:p-6">
                     <div className="flex justify-between items-start mb-2">
@@ -569,6 +603,14 @@ export default function AdminPage() {
           </div>
         )}
 
+        {/* Order Products Popup */}
+        {showOrderProductsPopup && (
+          <OrderProductsPopup
+            order={showOrderProductsPopup}
+            onClose={() => setShowOrderProductsPopup(null)}
+          />
+        )}
+
         {showProductModal && (
           <ProductModal
             product={editingProduct}
@@ -583,7 +625,199 @@ export default function AdminPage() {
             }}
           />
         )}
+
+        {selectedProductDetail && (
+          <ProductDetailModal
+            product={selectedProductDetail}
+            onClose={() => setSelectedProductDetail(null)}
+            onEdit={(product) => {
+              setSelectedProductDetail(null);
+              setEditingProduct(product);
+              setShowProductModal(true);
+            }}
+          />
+        )}
       </div>
+    </div>
+  );
+}
+
+// Order Products Popup Component
+interface OrderProductsPopupProps {
+  order: Order;
+  onClose: () => void;
+}
+
+function OrderProductsPopup({ order, onClose }: OrderProductsPopupProps) {
+  return (
+    <div
+      className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4"
+      onClick={onClose}
+    >
+      <motion.div
+        initial={{ opacity: 0, scale: 0.95 }}
+        animate={{ opacity: 1, scale: 1 }}
+        className="bg-white rounded-2xl shadow-2xl w-full max-w-4xl max-h-[90vh] overflow-y-auto"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="sticky top-0 bg-white border-b p-4 sm:p-6 flex justify-between items-center z-10">
+          <div>
+            <h2 className="font-serif text-xl sm:text-2xl text-text-dark">
+              Order Products
+            </h2>
+            <p className="text-text-light text-sm mt-1">
+              Order #{order.orderNumber} - {order.items.length} item(s)
+            </p>
+          </div>
+          <button
+            onClick={onClose}
+            className="text-text-light hover:text-text-dark transition-colors p-1"
+          >
+            <FiX size={20} />
+          </button>
+        </div>
+
+        <div className="p-4 sm:p-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6">
+            {order.items.map((item, index) => (
+              <motion.div
+                key={index}
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: index * 0.1 }}
+                className="bg-gray-50 rounded-xl p-4 border hover:shadow-md transition-shadow"
+              >
+                <div className="flex gap-4">
+                  {/* Product Image */}
+                  <div className="flex-shrink-0">
+                    <img
+                      src={
+                        item.productId.images[0] || "/api/placeholder/120/120"
+                      }
+                      alt={item.productName}
+                      className="w-20 h-20 sm:w-24 sm:h-24 object-cover rounded-lg border"
+                      onError={(e) => {
+                        const target = e.target as HTMLImageElement;
+                        target.src = "/api/placeholder/120/120";
+                      }}
+                    />
+                  </div>
+
+                  <div className="flex-1 min-w-0">
+                    <div className="flex justify-between items-start mb-2">
+                      <h3 className="font-medium text-text-dark text-sm sm:text-base line-clamp-2">
+                        {item.productName}
+                      </h3>
+                      <span className="text-rose font-medium text-sm sm:text-base whitespace-nowrap ml-2">
+                        ₹{item.price}
+                      </span>
+                    </div>
+
+                    <div className="space-y-2 text-xs sm:text-sm">
+                      <div className="flex justify-between">
+                        <span className="text-text-light">Quantity:</span>
+                        <span className="font-medium">{item.quantity}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-text-light">Subtotal:</span>
+                        <span className="font-medium">
+                          ₹{item.price * item.quantity}
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* Customization Details */}
+                    {(item.customization.text ||
+                      item.customization.color ||
+                      item.customization.size ||
+                      item.customization.material) && (
+                      <div className="mt-3 pt-3 border-t border-gray-200">
+                        <div className="flex items-center gap-1 mb-2">
+                          <FiInfo className="text-rose" size={12} />
+                          <span className="text-xs font-medium text-text-dark">
+                            Customization
+                          </span>
+                        </div>
+                        <div className="space-y-1 text-xs text-text-light">
+                          {item.customization.text && (
+                            <p>
+                              <strong>Text:</strong> {item.customization.text}
+                            </p>
+                          )}
+                          {item.customization.color && (
+                            <p>
+                              <strong>Color:</strong> {item.customization.color}
+                            </p>
+                          )}
+                          {item.customization.size && (
+                            <p>
+                              <strong>Size:</strong> {item.customization.size}
+                            </p>
+                          )}
+                          {item.customization.material && (
+                            <p>
+                              <strong>Material:</strong>{" "}
+                              {item.customization.material}
+                            </p>
+                          )}
+                          {item.customization.specialInstructions && (
+                            <p>
+                              <strong>Instructions:</strong>{" "}
+                              {item.customization.specialInstructions}
+                            </p>
+                          )}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </motion.div>
+            ))}
+          </div>
+
+          {/* Order Summary */}
+          <div className="mt-6 pt-6 border-t border-gray-200">
+            <div className="flex justify-between items-center text-lg font-medium">
+              <span>Total Amount:</span>
+              <span className="text-rose text-xl">₹{order.totalAmount}</span>
+            </div>
+            <div className="flex justify-between items-center text-sm text-text-light mt-2">
+              <span>Order Status:</span>
+              <span
+                className={`px-2 py-1 rounded-full text-xs font-medium ${
+                  order.status === "pending"
+                    ? "bg-yellow-100 text-yellow-800"
+                    : order.status === "confirmed"
+                    ? "bg-blue-100 text-blue-800"
+                    : order.status === "in-progress"
+                    ? "bg-purple-100 text-purple-800"
+                    : order.status === "completed"
+                    ? "bg-green-100 text-green-800"
+                    : order.status === "shipped"
+                    ? "bg-teal-100 text-teal-800"
+                    : order.status === "delivered"
+                    ? "bg-green-200 text-green-900"
+                    : "bg-red-100 text-red-800"
+                }`}
+              >
+                {order.status}
+              </span>
+            </div>
+            <div className="flex justify-between items-center text-sm text-text-light mt-1">
+              <span>Payment Status:</span>
+              <span
+                className={`px-2 py-1 rounded-full text-xs font-medium ${
+                  order.paymentStatus === "paid"
+                    ? "bg-green-100 text-green-800"
+                    : "bg-yellow-100 text-yellow-800"
+                }`}
+              >
+                {order.paymentStatus}
+              </span>
+            </div>
+          </div>
+        </div>
+      </motion.div>
     </div>
   );
 }
@@ -594,6 +828,217 @@ interface ProductModalProps {
   onSave: () => void;
 }
 
+interface ProductDetailModalProps {
+  product: Product;
+  onClose: () => void;
+  onEdit: (product: Product) => void;
+}
+
+function ProductDetailModal({
+  product,
+  onClose,
+  onEdit,
+}: ProductDetailModalProps) {
+  const [currentImageIndex, setCurrentImageIndex] = useState(0);
+
+  return (
+    <div
+      className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4"
+      onClick={onClose}
+    >
+      <motion.div
+        initial={{ opacity: 0, scale: 0.95 }}
+        animate={{ opacity: 1, scale: 1 }}
+        className="bg-white rounded-2xl shadow-2xl w-full max-w-4xl max-h-[90vh] overflow-y-auto"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="sticky top-0 bg-white border-b p-4 sm:p-6 flex justify-between items-center z-10">
+          <h2 className="font-serif text-xl sm:text-2xl text-text-dark">
+            Product Details
+          </h2>
+          <button
+            onClick={onClose}
+            className="text-text-light hover:text-text-dark transition-colors p-1"
+          >
+            <FiX size={20} />
+          </button>
+        </div>
+
+        <div className="p-4 sm:p-6">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            {/* Image Gallery */}
+            <div className="space-y-4">
+              {product.images && product.images.length > 0 ? (
+                <>
+                  <div className="relative rounded-xl overflow-hidden bg-gray-100">
+                    <img
+                      src={product.images[currentImageIndex]}
+                      alt={`${product.name} - Image ${currentImageIndex + 1}`}
+                      className="w-full h-64 sm:h-80 object-cover"
+                      onError={(e) => {
+                        const target = e.target as HTMLImageElement;
+                        target.src = "/api/placeholder/400/300";
+                      }}
+                    />
+                    {product.images.length > 1 && (
+                      <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 bg-black/60 text-white px-3 py-1 rounded-full text-sm">
+                        {currentImageIndex + 1} / {product.images.length}
+                      </div>
+                    )}
+                  </div>
+                  {product.images.length > 1 && (
+                    <div className="grid grid-cols-5 gap-2">
+                      {product.images.map((img, idx) => (
+                        <button
+                          key={idx}
+                          onClick={() => setCurrentImageIndex(idx)}
+                          className={`relative rounded-lg overflow-hidden border-2 transition-all ${
+                            idx === currentImageIndex
+                              ? "border-rose"
+                              : "border-gray-200 hover:border-gray-300"
+                          }`}
+                        >
+                          <img
+                            src={img}
+                            alt={`Thumbnail ${idx + 1}`}
+                            className="w-full h-16 object-cover"
+                            onError={(e) => {
+                              const target = e.target as HTMLImageElement;
+                              target.src = "/api/placeholder/100/100";
+                            }}
+                          />
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </>
+              ) : (
+                <div className="w-full h-64 sm:h-80 bg-gray-100 rounded-xl flex items-center justify-center">
+                  <span className="text-gray-400">No images available</span>
+                </div>
+              )}
+            </div>
+
+            {/* Product Info */}
+            <div className="space-y-4">
+              <div>
+                <div className="flex items-center gap-2 mb-2">
+                  <span
+                    className={`px-3 py-1 text-xs rounded-full ${
+                      product.inStock
+                        ? "bg-green-100 text-green-800"
+                        : "bg-red-100 text-red-800"
+                    }`}
+                  >
+                    {product.inStock ? "In Stock" : "Out of Stock"}
+                  </span>
+                  {product.featured && (
+                    <span className="px-3 py-1 text-xs rounded-full bg-rose text-white">
+                      Featured
+                    </span>
+                  )}
+                </div>
+                <h3 className="font-serif text-2xl text-text-dark mb-2">
+                  {product.name}
+                </h3>
+                <p className="text-sm text-text-light capitalize mb-3">
+                  {product.category}
+                </p>
+                <p className="text-2xl text-rose font-medium mb-4">
+                  ₹{product.basePrice}
+                </p>
+              </div>
+
+              <div>
+                <h4 className="font-medium text-text-dark mb-2">Description</h4>
+                <p className="text-text-light text-sm leading-relaxed">
+                  {product.description}
+                </p>
+              </div>
+
+              {product.options && (
+                <div className="space-y-3">
+                  {product.options.sizes &&
+                    product.options.sizes.length > 0 && (
+                      <div>
+                        <h4 className="font-medium text-text-dark mb-2 text-sm">
+                          Sizes{" "}
+                          {product.options.sizeUnit &&
+                            `(${product.options.sizeUnit})`}
+                        </h4>
+                        <div className="flex flex-wrap gap-2">
+                          {product.options.sizes.map((size, idx) => (
+                            <span
+                              key={idx}
+                              className="px-3 py-1 bg-gray-100 rounded-full text-xs"
+                            >
+                              {size}
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                  {product.options.materials &&
+                    product.options.materials.length > 0 && (
+                      <div>
+                        <h4 className="font-medium text-text-dark mb-2 text-sm">
+                          Materials
+                        </h4>
+                        <div className="flex flex-wrap gap-2">
+                          {product.options.materials.map((material, idx) => (
+                            <span
+                              key={idx}
+                              className="px-3 py-1 bg-gray-100 rounded-full text-xs"
+                            >
+                              {material}
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                </div>
+              )}
+
+              <div className="pt-4 border-t">
+                <h4 className="font-medium text-text-dark mb-2 text-sm">
+                  Additional Info
+                </h4>
+                <div className="space-y-1 text-sm text-text-light">
+                  <p>Customizable: {product.customizable ? "Yes" : "No"}</p>
+                  <p>Product ID: {product._id}</p>
+                  {product.createdAt && (
+                    <p>
+                      Created:{" "}
+                      {new Date(product.createdAt).toLocaleDateString()}
+                    </p>
+                  )}
+                </div>
+              </div>
+
+              <div className="flex gap-3 pt-4">
+                <button
+                  onClick={() => onEdit(product)}
+                  className="flex-1 flex items-center justify-center gap-2 bg-rose text-white px-6 py-3 rounded-lg hover:bg-opacity-90 transition-colors"
+                >
+                  <FiEdit2 size={16} />
+                  Edit Product
+                </button>
+                <button
+                  onClick={onClose}
+                  className="px-6 py-3 border border-gray-300 text-text-dark rounded-lg hover:bg-gray-50 transition-colors"
+                >
+                  Close
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </motion.div>
+    </div>
+  );
+}
+
 function ProductModal({ product, onClose, onSave }: ProductModalProps) {
   const [formData, setFormData] = useState({
     name: product?.name || "",
@@ -601,9 +1046,9 @@ function ProductModal({ product, onClose, onSave }: ProductModalProps) {
     description: product?.description || "",
     basePrice: product?.basePrice || 0,
     customizable: product?.customizable ?? true,
-    colors: product?.options?.colors?.join(", ") || "",
     sizes: product?.options?.sizes?.join(", ") || "",
-    materials: product?.options?.materials?.join(", ") || "",
+    sizeUnit: product?.options?.sizeUnit || "inch",
+    materials: product?.options?.materials?.join(", ") || "Cotton thread",
     inStock: product?.inStock ?? true,
     featured: product?.featured ?? false,
   });
@@ -756,17 +1201,14 @@ function ProductModal({ product, onClose, onSave }: ProductModalProps) {
       category: formData.category,
       description: formData.description,
       basePrice: Number(formData.basePrice),
-      images: uploadedImages, // Use the ordered array directly
+      images: uploadedImages,
       customizable: formData.customizable,
       options: {
-        colors: formData.colors
-          .split(",")
-          .map((s) => s.trim())
-          .filter((s) => s),
         sizes: formData.sizes
           .split(",")
           .map((s) => s.trim())
           .filter((s) => s),
+        sizeUnit: formData.sizeUnit,
         materials: formData.materials
           .split(",")
           .map((s) => s.trim())
@@ -869,7 +1311,6 @@ function ProductModal({ product, onClose, onSave }: ProductModalProps) {
               }
               className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:border-rose"
               rows={3}
-              required
             />
           </div>
 
@@ -1061,50 +1502,61 @@ function ProductModal({ product, onClose, onSave }: ProductModalProps) {
             )}
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-            <div>
-              <label className="block text-sm font-medium text-text-dark mb-1">
-                Colors
-              </label>
-              <input
-                type="text"
-                value={formData.colors}
-                onChange={(e) =>
-                  setFormData({ ...formData, colors: e.target.value })
-                }
-                className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:border-rose"
-                placeholder="Red, Blue, Green"
-              />
-            </div>
-
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <label className="block text-sm font-medium text-text-dark mb-1">
                 Sizes
               </label>
-              <input
-                type="text"
-                value={formData.sizes}
-                onChange={(e) =>
-                  setFormData({ ...formData, sizes: e.target.value })
-                }
-                className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:border-rose"
-                placeholder="Small, Medium, Large"
-              />
+              <div className="flex gap-2">
+                <select
+                  value={formData.sizeUnit}
+                  onChange={(e) =>
+                    setFormData({
+                      ...formData,
+                      sizeUnit: e.target.value as "inch" | "cm" | "m",
+                    })
+                  }
+                  className="w-24 px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:border-rose"
+                >
+                  <option value="inch">Inch</option>
+                  <option value="cm">Cm</option>
+                  <option value="m">M</option>
+                </select>
+                <input
+                  type="text"
+                  value={formData.sizes}
+                  onChange={(e) =>
+                    setFormData({ ...formData, sizes: e.target.value })
+                  }
+                  className="flex-1 px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:border-rose"
+                  placeholder="12, 14, 16"
+                />
+              </div>
+              <p className="text-xs text-text-light mt-1">
+                Enter sizes separated by commas (numbers only)
+              </p>
             </div>
 
             <div>
               <label className="block text-sm font-medium text-text-dark mb-1">
                 Materials
               </label>
-              <input
-                type="text"
+              <select
                 value={formData.materials}
                 onChange={(e) =>
                   setFormData({ ...formData, materials: e.target.value })
                 }
                 className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:border-rose"
-                placeholder="Cotton, Silk, Polyester"
-              />
+              >
+                <option value="Cotton thread">Cotton thread</option>
+                <option value="Silk thread">Silk thread</option>
+                <option value="Wool thread">Wool thread</option>
+                <option value="Polyester thread">Polyester thread</option>
+                <option value="Metallic thread">Metallic thread</option>
+              </select>
+              <p className="text-xs text-text-light mt-1">
+                Select material type
+              </p>
             </div>
           </div>
 

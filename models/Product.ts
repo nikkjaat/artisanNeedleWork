@@ -1,62 +1,72 @@
-import mongoose, { Model, Document } from 'mongoose';
+import mongoose, { Model, Document } from "mongoose";
 
 interface IProduct extends Document {
   name: string;
-  category: 'embroidery' | 'hanky' | 'accessories';
+  category: "embroidery" | "hanky" | "accessories";
   description: string;
   basePrice: number;
   images: string[];
   customizable: boolean;
   options: {
-    colors: string[];
     sizes: string[];
+    sizeUnit: "inch" | "cm" | "m";
     materials: string[];
   };
   inStock: boolean;
   featured: boolean;
 }
 
-const ProductSchema = new mongoose.Schema({
-  name: {
-    type: String,
-    required: true,
+const ProductSchema = new mongoose.Schema(
+  {
+    name: {
+      type: String,
+      required: true,
+    },
+    category: {
+      type: String,
+      required: true,
+      enum: ["embroidery", "hanky", "accessories"],
+    },
+    description: {
+      type: String,
+    },
+    basePrice: {
+      type: Number,
+      required: true,
+    },
+    images: [
+      {
+        type: String,
+      },
+    ],
+    customizable: {
+      type: Boolean,
+      default: true,
+    },
+    options: {
+      sizes: [String],
+      sizeUnit: {
+        type: String,
+        enum: ["inch", "cm", "m"],
+        default: "inch",
+      },
+      materials: [String],
+    },
+    inStock: {
+      type: Boolean,
+      default: true,
+    },
+    featured: {
+      type: Boolean,
+      default: false,
+    },
   },
-  category: {
-    type: String,
-    required: true,
-    enum: ['embroidery', 'hanky', 'accessories'],
-  },
-  description: {
-    type: String,
-    required: true,
-  },
-  basePrice: {
-    type: Number,
-    required: true,
-  },
-  images: [{
-    type: String,
-  }],
-  customizable: {
-    type: Boolean,
-    default: true,
-  },
-  options: {
-    colors: [String],
-    sizes: [String],
-    materials: [String],
-  },
-  inStock: {
-    type: Boolean,
-    default: true,
-  },
-  featured: {
-    type: Boolean,
-    default: false,
-  },
-}, {
-  timestamps: true,
-});
+  {
+    timestamps: true,
+  }
+);
 
-const Product = (mongoose.models.Product as Model<IProduct>) || mongoose.model<IProduct>('Product', ProductSchema);
+const Product =
+  (mongoose.models.Product as Model<IProduct>) ||
+  mongoose.model<IProduct>("Product", ProductSchema);
 export default Product;
