@@ -4,8 +4,9 @@ import { motion, AnimatePresence } from "framer-motion";
 import { useState, useEffect, useRef } from "react";
 import { GiSewingNeedle, GiLipstick } from "react-icons/gi";
 import { GiHairStrands } from "react-icons/gi";
-import { X, ChevronLeft, ChevronRight } from "lucide-react";
+import { X, ChevronLeft, ChevronRight, ArrowRight } from "lucide-react";
 import CustomizationModal from "./CustomizationModal";
+import { useRouter } from "next/navigation";
 
 interface Product {
   _id: string;
@@ -25,6 +26,7 @@ interface Product {
 
 export default function Products() {
   const [featuredProducts, setFeaturedProducts] = useState<Product[]>([]);
+  const [allProducts, setAllProducts] = useState<Product[]>([]);
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
   const [customizationProduct, setCustomizationProduct] =
     useState<Product | null>(null);
@@ -39,33 +41,7 @@ export default function Products() {
   const scrollIntervalRef = useRef<{ [key: string]: NodeJS.Timeout }>({});
   const modalRef = useRef<HTMLDivElement>(null);
   const fullScreenRef = useRef<HTMLDivElement>(null);
-
-  const categories = [
-    {
-      title: "Embroidery Hoops",
-      description:
-        "Personalised embroidered designs perfect for home décor or heartfelt gifts. Each stitch tells your unique story.",
-      icon: <GiSewingNeedle />,
-      color: "bg-blush",
-      category: "embroidery",
-    },
-    {
-      title: "Hand-Painted Hankies",
-      description:
-        "Delicate watercolor designs on soft cotton hankies. A thoughtful keepsake for special moments and memories.",
-      icon: <GiLipstick />,
-      color: "bg-lavender",
-      category: "hanky",
-    },
-    {
-      title: "Hair Accessories",
-      description:
-        "Adorable handmade bows, clips, and bands. Add a charming touch to your everyday style with these cute creations.",
-      icon: <GiHairStrands />,
-      color: "bg-beige",
-      category: "accessories",
-    },
-  ];
+  const router = useRouter();
 
   // Auto-scroll images for products with multiple images in grid
   useEffect(() => {
@@ -303,34 +279,46 @@ export default function Products() {
   }, [modalImageIndex, isFullScreenImage, selectedProduct]);
 
   useEffect(() => {
-    const fetchFeaturedProducts = async () => {
+    const fetchProducts = async () => {
       try {
-        const response = await fetch("/api/products?featured=true");
+        const response = await fetch("/api/products");
         const data = await response.json();
 
         if (data.success && data.products && data.products.length > 0) {
-          // Filter only featured products and ensure images is an array
-          const featured = data.products
-            .filter((product: Product) => product.featured === true)
-            .map((product: Product) => ({
-              ...product,
-              images: Array.isArray(product.images) ? product.images : [],
-            }));
+          // Ensure images is an array for all products
+          const products = data.products.map((product: Product) => ({
+            ...product,
+            images: Array.isArray(product.images) ? product.images : [],
+          }));
+
+          // Set all products
+          setAllProducts(products);
+
+          // Filter only featured products
+          const featured = products.filter(
+            (product: Product) => product.featured === true
+          );
           setFeaturedProducts(featured);
         } else {
-          // If no featured products, show empty array
+          // If no products, show empty arrays
           setFeaturedProducts([]);
+          setAllProducts([]);
         }
       } catch (error) {
-        console.error("Error fetching featured products:", error);
+        console.error("Error fetching products:", error);
         setFeaturedProducts([]);
+        setAllProducts([]);
       } finally {
         setLoading(false);
       }
     };
 
-    fetchFeaturedProducts();
+    fetchProducts();
   }, []);
+
+  const handleViewAllProducts = () => {
+    router.push("/products");
+  };
 
   if (loading) {
     return (
@@ -367,129 +355,149 @@ export default function Products() {
             </p>
           </motion.div>
 
-          {/* Featured Products Grid */}
+          {/* Products Grid - Show featured products first, then other products */}
           {featuredProducts.length > 0 ? (
-            <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6 md:gap-8">
-              {featuredProducts.map((product, index) => {
-                const images = Array.isArray(product.images)
-                  ? product.images
-                  : [];
-                const currentIndex = currentImageIndex[product._id] || 0;
-                const hasMultipleImages = images.length > 1;
+            <>
+              <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6 md:gap-8 mb-10 sm:mb-12 md:mb-16">
+                {featuredProducts.map((product, index) => {
+                  const images = Array.isArray(product.images)
+                    ? product.images
+                    : [];
+                  const currentIndex = currentImageIndex[product._id] || 0;
+                  const hasMultipleImages = images.length > 1;
 
-                return (
-                  <motion.div
-                    key={product._id}
-                    initial={{ opacity: 0, y: 30 }}
-                    whileInView={{ opacity: 1, y: 0 }}
-                    viewport={{ once: true }}
-                    transition={{ delay: index * 0.2, duration: 0.5 }}
-                    className="bg-white rounded-xl sm:rounded-2xl lg:rounded-3xl overflow-hidden shadow-sm hover:shadow-md sm:hover:shadow-lg transition-all cursor-pointer group"
-                    onClick={() => handleProductClick(product)}
-                  >
-                    {/* Product Image */}
-                    <div
-                      className="relative h-32 sm:h-40 md:h-48 lg:h-56 bg-gray-100 overflow-hidden"
-                      onMouseEnter={() => handleImageHover(product._id, true)}
-                      onMouseLeave={() => handleImageHover(product._id, false)}
+                  return (
+                    <motion.div
+                      key={product._id}
+                      initial={{ opacity: 0, y: 30 }}
+                      whileInView={{ opacity: 1, y: 0 }}
+                      viewport={{ once: true }}
+                      transition={{ delay: index * 0.2, duration: 0.5 }}
+                      className="bg-white rounded-xl sm:rounded-2xl lg:rounded-3xl overflow-hidden shadow-sm hover:shadow-md sm:hover:shadow-lg transition-all cursor-pointer group"
+                      onClick={() => handleProductClick(product)}
                     >
-                      <img
-                        src={images[currentIndex] || "/placeholder.png"}
-                        alt={product.name}
-                        className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
-                      />
-
-                      {/* Price Badge */}
-                      <div className="absolute top-2 right-2 bg-white bg-opacity-90 px-2 py-1 rounded-full text-xs font-medium text-text-dark shadow-sm">
-                        ₹{product.basePrice}
-                      </div>
-
-                      {/* Featured Badge */}
-                      <div className="absolute top-2 left-2 bg-rose text-white px-1.5 py-0.5 rounded-full text-xs font-medium">
-                        Featured
-                      </div>
-
-                      {/* Image Indicators */}
-                      {hasMultipleImages && (
-                        <div className="absolute bottom-2 left-1/2 transform -translate-x-1/2 flex gap-1">
-                          {images.map((_, idx) => (
-                            <div
-                              key={idx}
-                              className={`w-1.5 h-1.5 rounded-full transition-all ${
-                                idx === currentIndex
-                                  ? "bg-white shadow-sm"
-                                  : "bg-white bg-opacity-50"
-                              }`}
-                            />
-                          ))}
-                        </div>
-                      )}
-
-                      {/* Multiple Images Badge */}
-                      {hasMultipleImages && (
-                        <div className="absolute top-2 left-10 bg-black bg-opacity-60 text-white px-1.5 py-0.5 rounded-full text-xs">
-                          {images.length}
-                        </div>
-                      )}
-
-                      {/* Hover Overlay */}
-                      <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-10 transition-all duration-300" />
-                    </div>
-
-                    {/* Product Info */}
-                    <div className="p-3 sm:p-4">
-                      {/* Product Name - Maximum 2 lines */}
-                      <h3 className="font-medium text-text-dark text-sm sm:text-base mb-1 sm:mb-2 line-clamp-2 leading-tight min-h-[2.5rem] sm:min-h-[3rem]">
-                        {product.name}
-                      </h3>
-
-                      {/* Product Description - Maximum 1 line */}
-                      <p className="text-text-light text-xs sm:text-sm mb-2 sm:mb-3 line-clamp-1 leading-relaxed">
-                        {product.description}
-                      </p>
-
-                      {/* View Details Button */}
-                      <motion.button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleProductClick(product);
-                        }}
-                        className="w-full px-3 py-2 bg-gradient-soft text-text-dark rounded-lg sm:rounded-xl text-xs sm:text-sm font-medium hover:shadow-md transition-all group-hover:bg-rose group-hover:text-white"
-                        whileHover={{ scale: 1.02 }}
-                        whileTap={{ scale: 0.98 }}
+                      {/* Product Image */}
+                      <div
+                        className="relative h-32 sm:h-40 md:h-48 lg:h-56 bg-gray-100 overflow-hidden"
+                        onMouseEnter={() => handleImageHover(product._id, true)}
+                        onMouseLeave={() =>
+                          handleImageHover(product._id, false)
+                        }
                       >
-                        View Details
-                      </motion.button>
-                    </div>
-                  </motion.div>
-                );
-              })}
-            </div>
-          ) : (
-            // Fallback to category cards if no featured products
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 sm:gap-8">
-              {categories.map((category, index) => (
-                <motion.div
-                  key={category.title}
-                  initial={{ opacity: 0, y: 30 }}
-                  whileInView={{ opacity: 1, y: 0 }}
-                  viewport={{ once: true }}
-                  transition={{ delay: index * 0.2, duration: 0.5 }}
-                  className="bg-white rounded-2xl sm:rounded-3xl p-6 sm:p-8 text-center shadow-md hover:shadow-lg transition-all"
+                        <img
+                          src={images[currentIndex] || "/placeholder.png"}
+                          alt={product.name}
+                          className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+                        />
+
+                        {/* Price Badge */}
+                        <div className="absolute top-2 right-2 bg-white bg-opacity-90 px-2 py-1 rounded-full text-xs font-medium text-text-dark shadow-sm">
+                          ₹{product.basePrice}
+                        </div>
+
+                        {/* Featured Badge - Only show if product is featured */}
+                        {product.featured && (
+                          <div className="absolute top-2 left-2 bg-rose text-white px-1.5 py-0.5 rounded-full text-xs font-medium">
+                            Featured
+                          </div>
+                        )}
+
+                        {/* Image Indicators */}
+                        {hasMultipleImages && (
+                          <div className="absolute bottom-2 left-1/2 transform -translate-x-1/2 flex gap-1">
+                            {images.map((_, idx) => (
+                              <div
+                                key={idx}
+                                className={`w-1.5 h-1.5 rounded-full transition-all ${
+                                  idx === currentIndex
+                                    ? "bg-white shadow-sm"
+                                    : "bg-white bg-opacity-50"
+                                }`}
+                              />
+                            ))}
+                          </div>
+                        )}
+
+                        {/* Multiple Images Badge */}
+                        {hasMultipleImages && (
+                          <div className="absolute top-2 left-10 bg-black bg-opacity-60 text-white px-1.5 py-0.5 rounded-full text-xs">
+                            {images.length}
+                          </div>
+                        )}
+
+                        {/* Hover Overlay */}
+                        <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-10 transition-all duration-300" />
+                      </div>
+
+                      {/* Product Info */}
+                      <div className="p-3 sm:p-4">
+                        {/* Product Name - Maximum 2 lines */}
+                        <h3 className="font-medium text-text-dark text-sm sm:text-base mb-1 sm:mb-2 line-clamp-2 leading-tight min-h-[2.5rem] sm:min-h-[3rem]">
+                          {product.name}
+                        </h3>
+
+                        {/* Product Description - Maximum 1 line */}
+                        <p className="text-text-light text-xs sm:text-sm mb-2 sm:mb-3 line-clamp-1 leading-relaxed">
+                          {product.description}
+                        </p>
+
+                        {/* View Details Button */}
+                        <motion.button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleProductClick(product);
+                          }}
+                          className="w-full px-3 py-2 bg-gradient-soft text-text-dark rounded-lg sm:rounded-xl text-xs sm:text-sm font-medium hover:shadow-md transition-all group-hover:bg-rose group-hover:text-white"
+                          whileHover={{ scale: 1.02 }}
+                          whileTap={{ scale: 0.98 }}
+                        >
+                          View Details
+                        </motion.button>
+                      </div>
+                    </motion.div>
+                  );
+                })}
+              </div>
+
+              {/* View All Products Button */}
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true }}
+                transition={{ duration: 0.6, delay: 0.3 }}
+                className="text-center"
+              >
+                <motion.button
+                  onClick={handleViewAllProducts}
+                  className="inline-flex items-center gap-2 px-6 sm:px-8 py-3 sm:py-4 bg-white text-text-dark rounded-xl sm:rounded-2xl font-medium hover:shadow-lg transition-all border border-gray-200 hover:border-rose group text-sm sm:text-base"
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
                 >
-                  <div
-                    className={`${category.color} w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4 text-2xl text-text-dark`}
-                  >
-                    {category.icon}
-                  </div>
-                  <h3 className="font-serif text-xl sm:text-2xl text-text-dark mb-3">
-                    {category.title}
-                  </h3>
-                  <p className="text-text-light text-sm sm:text-base leading-relaxed">
-                    {category.description}
-                  </p>
-                </motion.div>
-              ))}
+                  <span>View All Products</span>
+                  <ArrowRight className="w-4 h-4 sm:w-5 sm:h-5 transition-transform group-hover:translate-x-1" />
+                </motion.button>
+              </motion.div>
+            </>
+          ) : (
+            // No products available
+            <div className="text-center py-12">
+              <div className="bg-white rounded-3xl p-8 sm:p-12 max-w-2xl mx-auto shadow-sm">
+                <h3 className="font-serif text-2xl sm:text-3xl text-text-dark mb-4">
+                  No Products Available
+                </h3>
+                <p className="text-text-light text-base sm:text-lg mb-6">
+                  We're currently preparing our collection. Please check back
+                  soon for our latest creations.
+                </p>
+                <motion.button
+                  onClick={() => router.refresh()}
+                  className="px-6 py-3 bg-rose text-white rounded-xl font-medium hover:shadow-lg transition-all"
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
+                >
+                  Refresh Page
+                </motion.button>
+              </div>
             </div>
           )}
         </div>
@@ -616,9 +624,11 @@ export default function Products() {
                   {/* Header */}
                   <div>
                     <div className="flex items-center gap-2 mb-2">
-                      <span className="bg-rose text-white px-2 py-1 rounded-full text-xs font-medium">
-                        Featured
-                      </span>
+                      {selectedProduct.featured && (
+                        <span className="bg-rose text-white px-2 py-1 rounded-full text-xs font-medium">
+                          Featured
+                        </span>
+                      )}
                     </div>
                     <h2 className="font-serif text-xl sm:text-2xl md:text-3xl lg:text-4xl text-text-dark mb-2">
                       {selectedProduct.name}
