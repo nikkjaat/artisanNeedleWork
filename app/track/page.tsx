@@ -23,12 +23,12 @@ interface OrderStatus {
 
 export default function TrackOrderPage() {
   useEffect(() => {
-    document.title = "Track your Order | ArtisanNeedleWork - Handcrafted Gifts";
+    document.title = "Track your Order | StichKala - Handcrafted Gifts";
     document
       .querySelector('meta[name="description"]')
       ?.setAttribute(
         "content",
-        "Track your order status with ArtisanNeedleWork. Enter your order number to see real-time updates on your handcrafted gifts."
+        "Track your order status with StichKala. Enter your order number to see real-time updates on your handcrafted gifts."
       );
   }, []);
 
@@ -293,7 +293,7 @@ export default function TrackOrderPage() {
                 }`
               );
               window.open(
-                `https://wa.me/YOUR_PHONE_NUMBER?text=${message}`,
+                `https://wa.me/+919760258097?text=${message}`,
                 "_blank"
               );
             }}

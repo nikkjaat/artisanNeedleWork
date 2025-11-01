@@ -187,7 +187,7 @@ ${
     : ""
 }
 
-Track your order: https://artisan-needle-work.vercel.app/track`;
+Track your order: https://stichkala.vercel.app/track`;
 
   // Email HTML
   const emailHtml = `
@@ -216,7 +216,7 @@ Track your order: https://artisan-needle-work.vercel.app/track`;
         }
         
         <div style="text-align: center; margin: 30px 0;">
-          <a href="https://artisan-needle-work.vercel.app/track" 
+          <a href="https://stichkala.vercel.app/track" 
              style="background: #FFB6C1; color: white; padding: 12px 30px; text-decoration: none; border-radius: 25px; display: inline-block;">
             Track Your Order
           </a>

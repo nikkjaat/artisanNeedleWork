@@ -21,7 +21,7 @@ interface Product {
 
 export default function Shop() {
   useEffect(() => {
-    document.title = "ArtisanNeedleWork - Handcrafted Gifts";
+    document.title = "StichKala - Handcrafted Gifts";
     document
       .querySelector('meta[name="description"]')
       ?.setAttribute(

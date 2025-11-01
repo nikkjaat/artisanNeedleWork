@@ -8,7 +8,7 @@ export default function Footer() {
       <div className="container mx-auto max-w-6xl">
         <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mb-8">
           <div>
-            <h3 className="font-serif text-2xl mb-4 text-rose">ArtisanNeedleWork</h3>
+            <h3 className="font-serif text-2xl mb-4 text-rose">StichKala</h3>
             <p className="text-gray-300 text-sm leading-relaxed">
               Creating beautiful, personalised pieces with love and care. Each item is a unique
               work of art made just for you.
@@ -48,7 +48,7 @@ export default function Footer() {
         </div>
 
         <div className="border-t border-white border-opacity-10 pt-8 text-center text-sm text-gray-400">
-          <p>&copy; {new Date().getFullYear()} ArtisanNeedleWork. Handmade with ❤️ in India</p>
+          <p>&copy; {new Date().getFullYear()} StichKala. Handmade with ❤️ in India</p>
         </div>
       </div>
     </footer>

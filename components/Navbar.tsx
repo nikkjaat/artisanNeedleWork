@@ -74,12 +74,13 @@ export default function Navbar() {
               whileTap={{ scale: 0.95 }}
             >
               <img
+              style={{objectFit: 'contain', width:'70px', height:'70px'}}
                 src="/logo.png"
-                alt="ArtisanNeedleWork Logo"
-                className="h-10 w-10 sm:h-12 sm:w-12"
+                alt="StickKala logo"
+                className="h-10 w-15 sm:h-12 sm:w-12"
               />
               <span className="font-serif text-xl sm:text-2xl md:text-3xl text-text-dark ml-2 sm:ml-3">
-                ArtisanNeedleWork
+                StichKala
               </span>
             </motion.div>
           </Link>

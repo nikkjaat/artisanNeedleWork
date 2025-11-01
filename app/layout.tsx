@@ -19,7 +19,7 @@ const poppins = Poppins({
 });
 
 export const metadata: Metadata = {
-  title: "ArtisanNeedlework - Personalised Embroidery & More",
+  title: "StichKala - Personalised Embroidery & More",
   description:
     "Beautiful handmade gifts including personalised embroidery hoops, hand-painted hankies, and cute hair accessories. Each piece crafted with love.",
   icons: {
